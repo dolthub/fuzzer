@@ -1,0 +1,90 @@
+# Adheres to the following TOML specification: https://toml.io/en/v1.0.0
+# All strings are currently limited to ASCII characters.
+
+[Invalid_Name_Regexes]
+Branches = '(\d.*|dolt_.*)'
+Tables = '(\d.*|dolt_.*)'
+Columns = 'dolt_.*'
+Indexes = 'dolt_.*'
+Constraints = 'dolt_.*'
+
+[Amounts]
+Branches = [1, 4]
+Tables = [1, 10]
+Primary_Keys = [1, 5]
+Columns = [1, 20]
+Indexes = [0, 10]
+Foreign_Key_Constraints = [0, 7]
+Rows = [1, 1000]
+Index_Delay = [0]
+
+[Statement_Distribution]
+INSERT = [1, 2]
+REPLACE = [1, 2]
+UPDATE = [1, 2]
+DELETE = [1]
+
+[Interface_Distribution]
+CLI_Query = [1, 4]
+CLI_Batch = [1, 4]
+SQL_Server = [1, 4]
+Consecutive_Range = [10, 25]
+
+[Options]
+Dolt_Version = "" # May use the version or hash. The empty string represents the currently-installed Dolt.
+Auto_GC = false
+Manual_GC = true
+Include_README_Config = false
+Enforce_Rows_Lower_Bound_on_Master_Only = false # If enabled, then Amounts->Rows lower bound only applies to the master branch
+Logging = true
+Port = 3307
+
+[Types.Parameters] # All are ranges except for collations
+BINARY_Length = [1, 255]
+BIT_Width = [1, 64]
+CHAR_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+CHAR_Length = [1, 255]
+DECIMAL_Precision = [1, 65] # The total number of digits
+DECIMAL_Scale = [0, 30] # The number of digits after the decimal
+ENUM_ElementNameLength = [2, 16]
+ENUM_NumberOfElements = [1, 100]
+SET_ElementNameLength = [2, 16]
+SET_NumberOfElements = [1, 64]
+VARBINARY_Length = [1, 65535]
+VARCHAR_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+VARCHAR_Length = [1, 16383]
+
+[Types.Distribution]
+BIGINT = [1]
+BIGINT_UNSIGNED = [1]
+BINARY = [1]
+BIT = [1]
+BLOB = [1]
+CHAR = [1]
+DATE = [1]
+DATETIME = [1]
+DECIMAL = [1]
+DOUBLE = [1]
+ENUM = [1]
+FLOAT = [1]
+INT = [1]
+INT_UNSIGNED = [1]
+LONGBLOB = [0]
+LONGTEXT = [0]
+MEDIUMBLOB = [0]
+MEDIUMINT = [1]
+MEDIUMINT_UNSIGNED = [1]
+MEDIUMTEXT = [0]
+SET = [1]
+SMALLINT = [1]
+SMALLINT_UNSIGNED = [1]
+TEXT = [1]
+TIME = [1]
+TIMESTAMP = [1]
+TINYBLOB = [1]
+TINYINT = [1]
+TINYINT_UNSIGNED = [1]
+TINYTEXT = [1]
+VARBINARY = [1]
+VARCHAR = [1]
+YEAR = [1]

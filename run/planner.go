@@ -1,0 +1,43 @@
+package run
+
+import (
+	"os"
+	"path/filepath"
+	"runtime"
+
+	"github.com/dolthub/fuzzer/errors"
+	"github.com/dolthub/fuzzer/parameters"
+)
+
+// Planner is the entry point that commands may use to hook into the various points of a cycle. It also creates each
+// cycle.
+type Planner struct {
+	Hooks            *Hooks
+	base             *parameters.Base
+	workingDirectory string
+}
+
+// NewPlanner returns a new *Planner from the given parameters.Base.
+func NewPlanner(base *parameters.Base) (*Planner, error) {
+	workingDirectory, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	workingDirectory = filepath.ToSlash(workingDirectory)
+	hooks := &Hooks{}
+	if base.Options.ManualGC {
+		(&GCManager{}).Register(hooks)
+	}
+	return &Planner{
+		Hooks:            hooks,
+		base:             base,
+		workingDirectory: workingDirectory,
+	}, nil
+}
+
+// NewCycle returns a new *Cycle created from this Planner.
+func (p *Planner) NewCycle() (*Cycle, error) {
+	// We force GC before each cycle as we put a lot of pressure on the GC each run.
+	runtime.GC()
+	return newCycle(p)
+}
