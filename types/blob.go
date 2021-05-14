@@ -45,8 +45,16 @@ func (i *BlobInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *BlobInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *BlobInstance) Name() string {
+func (i *BlobInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "LONGTEXT"
+	}
 	return "BLOB"
 }
 

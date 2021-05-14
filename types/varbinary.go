@@ -52,8 +52,16 @@ func (i *VarbinaryInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *VarbinaryInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *VarbinaryInstance) Name() string {
+func (i *VarbinaryInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "LONGTEXT"
+	}
 	return fmt.Sprintf("VARBINARY(%d)", i.charLength)
 }
 

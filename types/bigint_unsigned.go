@@ -35,8 +35,16 @@ func (i *BigintUnsignedInstance) Get() (Value, error) {
 	return Uint64Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *BigintUnsignedInstance) TypeValue() Value {
+	return Uint64Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *BigintUnsignedInstance) Name() string {
+func (i *BigintUnsignedInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "VARCHAR(20)"
+	}
 	return "BIGINT UNSIGNED"
 }
 

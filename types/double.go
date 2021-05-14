@@ -35,8 +35,13 @@ func (i *DoubleInstance) Get() (Value, error) {
 	return Float64Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *DoubleInstance) TypeValue() Value {
+	return Float64Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *DoubleInstance) Name() string {
+func (i *DoubleInstance) Name(sqlite bool) string {
 	return "DOUBLE"
 }
 

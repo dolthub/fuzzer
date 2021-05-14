@@ -35,8 +35,13 @@ func (i *FloatInstance) Get() (Value, error) {
 	return Float32Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *FloatInstance) TypeValue() Value {
+	return Float32Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *FloatInstance) Name() string {
+func (i *FloatInstance) Name(sqlite bool) string {
 	return "FLOAT"
 }
 

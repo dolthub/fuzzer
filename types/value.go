@@ -1,6 +1,7 @@
 package types
 
 import (
+	"database/sql/driver"
 	"strconv"
 	"unsafe"
 )
@@ -15,6 +16,8 @@ type Value interface {
 	Name() string
 	// String returns the underlying value as a string for insertion into a SQL file, e.g. string would include the quotes.
 	String() string
+	// SQLiteString returns the underlying value as a string for insertion into SQLite specifically.
+	SQLiteString() string
 }
 
 // NilValue is the Value type of a nil.
@@ -32,6 +35,11 @@ func (v NilValue) String() string {
 	return "NULL"
 }
 
+// SQLiteString implements the interface Value.
+func (v NilValue) SQLiteString() string {
+	return v.String()
+}
+
 // Compare implements the interface Value.
 func (v NilValue) Compare(other Value) int {
 	_, ok := other.(NilValue)
@@ -39,6 +47,11 @@ func (v NilValue) Compare(other Value) int {
 		return 0
 	}
 	return -1
+}
+
+// Value implements the interface driver.Value.
+func (v NilValue) Value() (driver.Value, error) {
+	return nil, nil
 }
 
 // Int8Value is the Value type of a int8.
@@ -54,6 +67,11 @@ func (v Int8Value) Name() string {
 // String implements the interface Value.
 func (v Int8Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Int8Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -73,6 +91,11 @@ func (v Int8Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Int8Value) Value() (driver.Value, error) {
+	return int64(v), nil
+}
+
 // Int16Value is the Value type of a int16.
 type Int16Value int16
 
@@ -86,6 +109,11 @@ func (v Int16Value) Name() string {
 // String implements the interface Value.
 func (v Int16Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Int16Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -105,6 +133,11 @@ func (v Int16Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Int16Value) Value() (driver.Value, error) {
+	return int64(v), nil
+}
+
 // Int32Value is the Value type of a int32.
 type Int32Value int32
 
@@ -118,6 +151,11 @@ func (v Int32Value) Name() string {
 // String implements the interface Value.
 func (v Int32Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Int32Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -137,6 +175,11 @@ func (v Int32Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Int32Value) Value() (driver.Value, error) {
+	return int64(v), nil
+}
+
 // Int64Value is the Value type of a int64.
 type Int64Value int64
 
@@ -150,6 +193,11 @@ func (v Int64Value) Name() string {
 // String implements the interface Value.
 func (v Int64Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Int64Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -169,6 +217,11 @@ func (v Int64Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Int64Value) Value() (driver.Value, error) {
+	return int64(v), nil
+}
+
 // Uint8Value is the Value type of a uint8.
 type Uint8Value uint8
 
@@ -182,6 +235,11 @@ func (v Uint8Value) Name() string {
 // String implements the interface Value.
 func (v Uint8Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Uint8Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -201,6 +259,11 @@ func (v Uint8Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Uint8Value) Value() (driver.Value, error) {
+	return uint64(v), nil
+}
+
 // Uint16Value is the Value type of a uint16.
 type Uint16Value uint16
 
@@ -214,6 +277,11 @@ func (v Uint16Value) Name() string {
 // String implements the interface Value.
 func (v Uint16Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Uint16Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -233,6 +301,11 @@ func (v Uint16Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Uint16Value) Value() (driver.Value, error) {
+	return uint64(v), nil
+}
+
 // Uint32Value is the Value type of a uint32.
 type Uint32Value uint32
 
@@ -246,6 +319,11 @@ func (v Uint32Value) Name() string {
 // String implements the interface Value.
 func (v Uint32Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Uint32Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -265,6 +343,11 @@ func (v Uint32Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Uint32Value) Value() (driver.Value, error) {
+	return uint64(v), nil
+}
+
 // Uint64Value is the Value type of a uint64.
 type Uint64Value uint64
 
@@ -278,6 +361,21 @@ func (v Uint64Value) Name() string {
 // String implements the interface Value.
 func (v Uint64Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
+}
+
+// SQLiteString implements the interface Value.
+func (v Uint64Value) SQLiteString() string {
+	// SQLite doesn't support uint64, so we get around this by returning a string of fixed length
+	uintStr := strconv.FormatUint(uint64(v), 10)
+	neededZeros := 20 - len(uintStr)
+	out := make([]byte, 22)
+	copy(out[1+neededZeros:], uintStr)
+	out[0] = 39
+	for i := 1; i <= neededZeros; i++ {
+		out[i] = 48
+	}
+	out[len(out)-1] = 39
+	return *(*string)(unsafe.Pointer(&out))
 }
 
 // Compare implements the interface Value.
@@ -297,6 +395,11 @@ func (v Uint64Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Uint64Value) Value() (driver.Value, error) {
+	return uint64(v), nil
+}
+
 // Float32Value is the Value type of a float32.
 type Float32Value float32
 
@@ -309,7 +412,12 @@ func (v Float32Value) Name() string {
 
 // String implements the interface Value.
 func (v Float32Value) String() string {
-	return StringValue(strconv.FormatFloat(float64(v), 'f', -1, 32)).String()
+	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 32)).String()
+}
+
+// SQLiteString implements the interface Value.
+func (v Float32Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -329,6 +437,11 @@ func (v Float32Value) Compare(other Value) int {
 	}
 }
 
+// Value implements the interface driver.Value.
+func (v Float32Value) Value() (driver.Value, error) {
+	return float64(v), nil
+}
+
 // Float64Value is the Value type of a float64.
 type Float64Value float64
 
@@ -341,7 +454,12 @@ func (v Float64Value) Name() string {
 
 // String implements the interface Value.
 func (v Float64Value) String() string {
-	return StringValue(strconv.FormatFloat(float64(v), 'f', -1, 64)).String()
+	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 64)).String()
+}
+
+// SQLiteString implements the interface Value.
+func (v Float64Value) SQLiteString() string {
+	return v.String()
 }
 
 // Compare implements the interface Value.
@@ -359,6 +477,11 @@ func (v Float64Value) Compare(other Value) int {
 	default:
 		return -2
 	}
+}
+
+// Value implements the interface driver.Value.
+func (v Float64Value) Value() (driver.Value, error) {
+	return float64(v), nil
 }
 
 // StringValue is the Value type of a string.
@@ -380,6 +503,11 @@ func (v StringValue) String() string {
 	return *(*string)(unsafe.Pointer(&out))
 }
 
+// SQLiteString implements the interface Value.
+func (v StringValue) SQLiteString() string {
+	return v.String()
+}
+
 // Compare implements the interface Value.
 func (v StringValue) Compare(other Value) int {
 	switch other := other.(type) {
@@ -395,4 +523,9 @@ func (v StringValue) Compare(other Value) int {
 	default:
 		return -2
 	}
+}
+
+// Value implements the interface driver.Value.
+func (v StringValue) Value() (driver.Value, error) {
+	return string(v), nil
 }

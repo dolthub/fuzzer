@@ -45,8 +45,13 @@ func (i *MediumtextInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *MediumtextInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *MediumtextInstance) Name() string {
+func (i *MediumtextInstance) Name(sqlite bool) string {
 	return "MEDIUMTEXT"
 }
 

@@ -65,8 +65,16 @@ func (i *VarcharInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *VarcharInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *VarcharInstance) Name() string {
+func (i *VarcharInstance) Name(sqlite bool) string {
+	if sqlite {
+		return fmt.Sprintf("VARCHAR(%d)", i.charLength)
+	}
 	return fmt.Sprintf("VARCHAR(%d) COLLATE %s", i.charLength, i.collation.String())
 }
 

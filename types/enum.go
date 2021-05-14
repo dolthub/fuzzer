@@ -40,9 +40,10 @@ func (e *Enum) Instance() (TypeInstance, error) {
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		if _, ok := addedElements[elemName]; !ok {
+		lowerElemName := strings.ToLower(elemName)
+		if _, ok := addedElements[lowerElemName]; !ok {
 			elements[i] = elemName
-			addedElements[elemName] = struct{}{}
+			addedElements[lowerElemName] = struct{}{}
 			i++
 		}
 	}
@@ -62,8 +63,16 @@ func (i *EnumInstance) Get() (Value, error) {
 	return Uint16Value(v%uint16(len(i.elements))) + 1, err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *EnumInstance) TypeValue() Value {
+	return Uint16Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *EnumInstance) Name() string {
+func (i *EnumInstance) Name(sqlite bool) string {
+	if sqlite {
+		return fmt.Sprintf("SMALLINT UNSIGNED")
+	}
 	return fmt.Sprintf("ENUM('%s')", strings.Join(i.elements, "','"))
 }
 

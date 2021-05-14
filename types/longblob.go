@@ -45,8 +45,16 @@ func (i *LongblobInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *LongblobInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *LongblobInstance) Name() string {
+func (i *LongblobInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "LONGTEXT"
+	}
 	return "LONGBLOB"
 }
 

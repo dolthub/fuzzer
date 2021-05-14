@@ -98,6 +98,13 @@ func newCycle(planner *Planner) (*Cycle, error) {
 // Run runs the cycle.
 func (c *Cycle) Run() (err error) {
 	defer func() {
+		if r := recover(); r != nil {
+			if rErr, ok := r.(error); ok {
+				err = errors.Wrap(rErr)
+			} else {
+				err = errors.New(fmt.Sprintf("%+v", r))
+			}
+		}
 		if err != nil {
 			_ = c.Logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished unsuccessfully: %s", time.Now().Format("2006-01-02 15:04:05")))
@@ -244,7 +251,11 @@ func (c *Cycle) run() error {
 		}
 		c.stats.SQLStatementsExecuted += uint64(consecutiveStatements)
 		c.stats.SQLStatementBatchSize = 0
-		if int64(table.Data.Size()) >= targetRowCount {
+		rowCount, err := table.Data.GetRowCount()
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		if rowCount >= targetRowCount {
 			break
 		}
 	}
@@ -255,6 +266,11 @@ func (c *Cycle) run() error {
 func (c *Cycle) init() error {
 	var err error
 	c.stats.CycleStart = time.Now()
+	if c.stats.CycleStart.Add(-time.Second).Before(c.planner.lastRunStartTime) {
+		time.Sleep(time.Second)
+		c.stats.CycleStart = time.Now()
+	}
+	c.planner.lastRunStartTime = c.stats.CycleStart
 	dbName := c.stats.CycleStart.Format("20060102150405")
 	c.Name = dbName
 

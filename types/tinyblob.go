@@ -45,8 +45,16 @@ func (i *TinyblobInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *TinyblobInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *TinyblobInstance) Name() string {
+func (i *TinyblobInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "LONGTEXT"
+	}
 	return "TINYBLOB"
 }
 

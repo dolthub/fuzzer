@@ -25,9 +25,9 @@ UPDATE = [1, 2]
 DELETE = [1]
 
 [Interface_Distribution]
-CLI_Query = [1, 4]
-CLI_Batch = [1, 4]
-SQL_Server = [1, 4]
+CLI_Query = [0]
+CLI_Batch = [0]
+SQL_Server = [1]
 Consecutive_Range = [10, 25]
 
 [Options]

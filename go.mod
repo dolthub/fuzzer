@@ -8,5 +8,6 @@ require (
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/gocraft/dbr/v2 v2.7.1
 	github.com/komkom/toml v0.0.0-20210317065440-24f427ca88cc
+	github.com/mattn/go-sqlite3 v1.14.3
 	github.com/pkg/errors v0.9.1
 )

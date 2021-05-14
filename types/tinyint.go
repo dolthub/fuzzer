@@ -35,8 +35,13 @@ func (i *TinyintInstance) Get() (Value, error) {
 	return Int8Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *TinyintInstance) TypeValue() Value {
+	return Int8Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *TinyintInstance) Name() string {
+func (i *TinyintInstance) Name(sqlite bool) string {
 	return "TINYINT"
 }
 

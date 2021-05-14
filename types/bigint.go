@@ -35,8 +35,13 @@ func (i *BigintInstance) Get() (Value, error) {
 	return Int64Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *BigintInstance) TypeValue() Value {
+	return Int64Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *BigintInstance) Name() string {
+func (i *BigintInstance) Name(sqlite bool) string {
 	return "BIGINT"
 }
 

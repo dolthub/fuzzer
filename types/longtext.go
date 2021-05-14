@@ -45,8 +45,13 @@ func (i *LongtextInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *LongtextInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *LongtextInstance) Name() string {
+func (i *LongtextInstance) Name(sqlite bool) string {
 	return "LONGTEXT"
 }
 

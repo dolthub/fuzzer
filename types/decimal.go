@@ -72,8 +72,16 @@ func (i *DecimalInstance) Get() (Value, error) {
 	return StringValue(strBytes), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *DecimalInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *DecimalInstance) Name() string {
+func (i *DecimalInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "VARCHAR(67)"
+	}
 	return fmt.Sprintf("DECIMAL(%d,%d)", i.precision, i.scale)
 }
 

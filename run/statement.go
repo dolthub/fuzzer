@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/dolthub/fuzzer/rand"
+	"github.com/mattn/go-sqlite3"
 
 	"github.com/dolthub/fuzzer/errors"
+	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
 	"github.com/dolthub/fuzzer/types"
 )
@@ -39,10 +40,14 @@ func (s *InsertStatement) GenerateStatement(table *Table) (string, error) {
 		if err != nil {
 			return "", errors.Wrap(err)
 		}
-		if !table.ContainsKey(row) {
-			table.Put(row)
-			return fmt.Sprintf("INSERT INTO `%s` VALUES (%s);", table.Name, row.String()), nil
+		err = table.Data.Exec(fmt.Sprintf("INSERT INTO `%s` VALUES (%s);", table.Name, row.SQLiteString()))
+		if err != nil {
+			if sqliteErr, ok := err.(sqlite3.Error); ok && sqliteErr.Code == sqlite3.ErrConstraint {
+				continue
+			}
+			return "", errors.Wrap(err)
 		}
+		return fmt.Sprintf("INSERT INTO `%s` VALUES (%s);", table.Name, row.MySQLString()), nil
 	}
 	return "", errors.New("10 million consecutive collisions on attempted INSERT, aborting cycle")
 }
@@ -65,8 +70,11 @@ func (s *ReplaceStatement) GenerateStatement(table *Table) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	table.Put(row)
-	return fmt.Sprintf("REPLACE INTO `%s` VALUES (%s);", table.Name, row.String()), nil
+	err = table.Data.Exec(fmt.Sprintf("REPLACE INTO `%s` VALUES (%s);", table.Name, row.SQLiteString()))
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	return fmt.Sprintf("REPLACE INTO `%s` VALUES (%s);", table.Name, row.MySQLString()), nil
 }
 
 // UpdateStatement returns random statements that are usually UPDATE statements. In the event that an UPDATE statement
@@ -85,7 +93,7 @@ func (s *UpdateStatement) GetOccurrenceRate() (int64, error) {
 
 // GenerateStatement implements the interface Statement.
 func (s *UpdateStatement) GenerateStatement(table *Table) (string, error) {
-	row, ok, err := table.GetRandomRow()
+	row, ok, err := table.Data.GetRandomRow()
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -95,7 +103,7 @@ func (s *UpdateStatement) GenerateStatement(table *Table) (string, error) {
 	if !ok || len(table.PKCols) == 0 || len(table.NonPKCols) == 0 {
 		return (&ReplaceStatement{}).GenerateStatement(table)
 	}
-	val, err := NewRowValue(table)
+	modifiedRow, err := row.NewRowValue(table)
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -109,19 +117,32 @@ func (s *UpdateStatement) GenerateStatement(table *Table) (string, error) {
 		cut = (cut % (uint16(len(table.NonPKCols)) - 1)) + 1
 	}
 	for i := int(cut); i < len(table.NonPKCols); i++ {
-		val[i] = row.Value[i]
+		modifiedRow.Value()[i] = row.Value()[i]
 	}
-	row.Value = val
+	row = modifiedRow
 
-	sets, err := valsToColumnEquals(table.NonPKCols[:cut], val[:cut])
+	sets, err := valsToColumnEquals(table.NonPKCols[:cut], row.Value()[:cut])
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	wheres, err := valsToColumnEquals(table.PKCols, row.Key)
+	setsSQLite, err := valsToColumnEqualsSQLite(table.NonPKCols[:cut], row.Value()[:cut])
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	table.Put(row)
+	wheres, err := valsToColumnEquals(table.PKCols, row.Key())
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	wheresSQLite, err := valsToColumnEqualsSQLite(table.PKCols, row.Key())
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	err = table.Data.Exec(
+		fmt.Sprintf("UPDATE `%s` SET %s WHERE %s;", table.Name, strings.Join(setsSQLite, ","), strings.Join(wheresSQLite, " AND ")),
+	)
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
 	return fmt.Sprintf("UPDATE `%s` SET %s WHERE %s;", table.Name, strings.Join(sets, ","), strings.Join(wheres, " AND ")), nil
 }
 
@@ -140,7 +161,7 @@ func (s *DeleteStatement) GetOccurrenceRate() (int64, error) {
 
 // GenerateStatement implements the interface Statement.
 func (s *DeleteStatement) GenerateStatement(table *Table) (string, error) {
-	row, ok, err := table.GetRandomRow()
+	row, ok, err := table.Data.GetRandomRow()
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -150,7 +171,15 @@ func (s *DeleteStatement) GenerateStatement(table *Table) (string, error) {
 		return (&ReplaceStatement{}).GenerateStatement(table)
 	}
 
-	wheres, err := valsToColumnEquals(table.PKCols, row.Key)
+	wheres, err := valsToColumnEquals(table.PKCols, row.Key())
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	wheresSQLite, err := valsToColumnEqualsSQLite(table.PKCols, row.Key())
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	err = table.Data.Exec(fmt.Sprintf("DELETE FROM `%s` WHERE %s;", table.Name, strings.Join(wheresSQLite, " AND ")))
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -158,7 +187,7 @@ func (s *DeleteStatement) GenerateStatement(table *Table) (string, error) {
 }
 
 // valsToColumnEquals returns a slice of strings of the form "`column_name` = value" from the given parameters.
-// Expects both slices to be of equal length.
+// Expects both slices to be of equal length. Intended for usage with MySQL.
 func valsToColumnEquals(colNames []*Column, vals []types.Value) ([]string, error) {
 	if len(colNames) != len(vals) {
 		return nil, errors.New(fmt.Sprintf("length mismatch: columns %d, vals %d", len(colNames), len(vals)))
@@ -166,6 +195,19 @@ func valsToColumnEquals(colNames []*Column, vals []types.Value) ([]string, error
 	s := make([]string, len(colNames))
 	for i := 0; i < len(colNames); i++ {
 		s[i] = fmt.Sprintf("`%s` = %s", colNames[i].Name, vals[i].String())
+	}
+	return s, nil
+}
+
+// valsToColumnEqualsSQLite returns a slice of strings of the form "`column_name` = value" from the given parameters.
+// Expects both slices to be of equal length. Intended for usage with SQLite.
+func valsToColumnEqualsSQLite(colNames []*Column, vals []types.Value) ([]string, error) {
+	if len(colNames) != len(vals) {
+		return nil, errors.New(fmt.Sprintf("length mismatch: columns %d, vals %d", len(colNames), len(vals)))
+	}
+	s := make([]string, len(colNames))
+	for i := 0; i < len(colNames); i++ {
+		s[i] = fmt.Sprintf("`%s` = %s", colNames[i].Name, vals[i].SQLiteString())
 	}
 	return s, nil
 }

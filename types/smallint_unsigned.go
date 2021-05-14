@@ -35,8 +35,13 @@ func (i *SmallintUnsignedInstance) Get() (Value, error) {
 	return Uint16Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *SmallintUnsignedInstance) TypeValue() Value {
+	return Uint16Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *SmallintUnsignedInstance) Name() string {
+func (i *SmallintUnsignedInstance) Name(sqlite bool) string {
 	return "SMALLINT UNSIGNED"
 }
 

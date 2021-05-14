@@ -4,6 +4,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/parameters"
@@ -15,6 +16,7 @@ type Planner struct {
 	Hooks            *Hooks
 	base             *parameters.Base
 	workingDirectory string
+	lastRunStartTime time.Time
 }
 
 // NewPlanner returns a new *Planner from the given parameters.Base.
@@ -32,6 +34,7 @@ func NewPlanner(base *parameters.Base) (*Planner, error) {
 		Hooks:            hooks,
 		base:             base,
 		workingDirectory: workingDirectory,
+		lastRunStartTime: time.Unix(0, 0),
 	}, nil
 }
 

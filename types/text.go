@@ -45,8 +45,13 @@ func (i *TextInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *TextInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *TextInstance) Name() string {
+func (i *TextInstance) Name(sqlite bool) string {
 	return "TEXT"
 }
 

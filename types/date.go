@@ -40,8 +40,16 @@ func (i *DateInstance) Get() (Value, error) {
 	return StringValue(t.Format("2006-01-02")), nil
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *DateInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *DateInstance) Name() string {
+func (i *DateInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "VARCHAR(100)"
+	}
 	return "DATE"
 }
 

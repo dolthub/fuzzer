@@ -35,8 +35,13 @@ func (i *SmallintInstance) Get() (Value, error) {
 	return Int16Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *SmallintInstance) TypeValue() Value {
+	return Int16Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *SmallintInstance) Name() string {
+func (i *SmallintInstance) Name(sqlite bool) string {
 	return "SMALLINT"
 }
 

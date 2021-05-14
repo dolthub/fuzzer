@@ -35,8 +35,13 @@ func (i *YearInstance) Get() (Value, error) {
 	return Uint16Value(v%254) + 1901, err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *YearInstance) TypeValue() Value {
+	return Uint16Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *YearInstance) Name() string {
+func (i *YearInstance) Name(sqlite bool) string {
 	return "YEAR"
 }
 

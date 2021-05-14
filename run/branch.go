@@ -158,8 +158,11 @@ func (b *Branch) NewTable(c *Cycle) (*Table, error) {
 			Type: typeInstance,
 		}
 	}
-	table := NewTable(parent, tableName, pkCols, nonPkCols, nil)
+	table, err := NewTable(parent, tableName, pkCols, nonPkCols, nil)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
 	return table, c.UseInterface(1, func(f func(string) error) error {
-		return f(table.CreateString())
+		return f(table.CreateString(false))
 	})
 }

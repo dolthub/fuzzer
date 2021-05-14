@@ -35,8 +35,13 @@ func (i *IntUnsignedInstance) Get() (Value, error) {
 	return Uint32Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *IntUnsignedInstance) TypeValue() Value {
+	return Uint32Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *IntUnsignedInstance) Name() string {
+func (i *IntUnsignedInstance) Name(sqlite bool) string {
 	return "INT UNSIGNED"
 }
 

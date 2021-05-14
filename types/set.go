@@ -41,9 +41,10 @@ func (s *Set) Instance() (TypeInstance, error) {
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		if _, ok := addedElements[elemName]; !ok {
+		lowerElemName := strings.ToLower(elemName)
+		if _, ok := addedElements[lowerElemName]; !ok {
 			elements[i] = elemName
-			addedElements[elemName] = struct{}{}
+			addedElements[lowerElemName] = struct{}{}
 			i++
 		}
 	}
@@ -66,8 +67,16 @@ func (i *SetInstance) Get() (Value, error) {
 	return Uint64Value(v % (1 << len(i.elements))), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *SetInstance) TypeValue() Value {
+	return Uint64Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *SetInstance) Name() string {
+func (i *SetInstance) Name(sqlite bool) string {
+	if sqlite {
+		return fmt.Sprintf("VARCHAR(20)")
+	}
 	return fmt.Sprintf("SET('%s')", strings.Join(i.elements, "','"))
 }
 

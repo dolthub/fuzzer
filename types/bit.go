@@ -47,8 +47,16 @@ func (i *BitInstance) Get() (Value, error) {
 	return Uint64Value(v % (1 << i.width)), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *BitInstance) TypeValue() Value {
+	return Uint64Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *BitInstance) Name() string {
+func (i *BitInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "VARCHAR(20)"
+	}
 	return fmt.Sprintf("BIT(%d)", i.width)
 }
 

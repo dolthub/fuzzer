@@ -45,8 +45,13 @@ func (i *TinytextInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *TinytextInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *TinytextInstance) Name() string {
+func (i *TinytextInstance) Name(sqlite bool) string {
 	return "TINYTEXT"
 }
 

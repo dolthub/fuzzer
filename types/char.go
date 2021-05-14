@@ -65,8 +65,16 @@ func (i *CharInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *CharInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *CharInstance) Name() string {
+func (i *CharInstance) Name(sqlite bool) string {
+	if sqlite {
+		return fmt.Sprintf("CHAR(%d)", i.charLength)
+	}
 	return fmt.Sprintf("CHAR(%d) COLLATE %s", i.charLength, i.collation.String())
 }
 

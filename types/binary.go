@@ -52,8 +52,16 @@ func (i *BinaryInstance) Get() (Value, error) {
 	return StringValue(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *BinaryInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *BinaryInstance) Name() string {
+func (i *BinaryInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "LONGTEXT"
+	}
 	return fmt.Sprintf("BINARY(%d)", i.charLength)
 }
 

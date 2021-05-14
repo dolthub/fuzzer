@@ -45,8 +45,16 @@ func (i *DatetimeInstance) Get() (Value, error) {
 	return StringValue(t.Format("2006-01-02 15:04:05")), nil
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *DatetimeInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *DatetimeInstance) Name() string {
+func (i *DatetimeInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "VARCHAR(100)"
+	}
 	return "DATETIME"
 }
 

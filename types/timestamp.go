@@ -41,16 +41,24 @@ func (i *TimestampInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	t := time.Unix(int64((v%(maxTimestamp+minTimestamp))-minTimestamp), 0)
-	return StringValue(t.Format("2006-01-02 15:04:05")), nil
+	t := time.Unix(int64((v%(maxTimestamp-minTimestamp))+minTimestamp), 0)
+	return StringValue(t.UTC().Format("2006-01-02 15:04:05")), nil
+}
+
+// TypeValue implements the TypeInstance interface.
+func (i *TimestampInstance) TypeValue() Value {
+	return StringValue("")
 }
 
 // Name implements the TypeInstance interface.
-func (i *TimestampInstance) Name() string {
+func (i *TimestampInstance) Name(sqlite bool) string {
+	if sqlite {
+		return "VARCHAR(100)"
+	}
 	return "TIMESTAMP"
 }
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *TimestampInstance) MaxValueCount() float64 {
-	return float64(2147483648)
+	return float64(maxTimestamp - minTimestamp)
 }

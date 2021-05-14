@@ -35,8 +35,13 @@ func (i *IntInstance) Get() (Value, error) {
 	return Int32Value(v), err
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *IntInstance) TypeValue() Value {
+	return Int32Value(0)
+}
+
 // Name implements the TypeInstance interface.
-func (i *IntInstance) Name() string {
+func (i *IntInstance) Name(sqlite bool) string {
 	return "INT"
 }
 

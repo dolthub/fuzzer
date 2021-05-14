@@ -44,8 +44,16 @@ func (i *TimeInstance) Get() (Value, error) {
 	return StringValue(fmt.Sprintf("%d:%02d:%02d", v/3600, (vAbs/60)%60, vAbs%60)), nil
 }
 
+// TypeValue implements the TypeInstance interface.
+func (i *TimeInstance) TypeValue() Value {
+	return StringValue("")
+}
+
 // Name implements the TypeInstance interface.
-func (i *TimeInstance) Name() string {
+func (i *TimeInstance) Name(sqlite bool) string {
+	if sqlite {
+		return fmt.Sprintf("VARCHAR(20)")
+	}
 	return "TIME"
 }
 
