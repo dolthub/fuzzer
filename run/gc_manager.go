@@ -11,16 +11,23 @@ var _ HookRegistrant = (*GCManager)(nil)
 
 // Register implements the HookRegistrant interface.
 func (m *GCManager) Register(hooks *Hooks) {
+	hooks.CycleInitialized(m.Initialize)
 	hooks.SQLStatementBatchFinished(m.Counter)
 	hooks.RepositoryFinished(m.Finish)
 }
 
+// Initialize resets the state of GCManager.
+func (m *GCManager) Initialize(c *Cycle) error {
+	m.statementsSinceLastGC = 0
+	return nil
+}
+
 // Counter counts the number of statements ran, and runs GC once a threshold has been crossed.
-func (m *GCManager) Counter(c *Cycle, stats *CycleStats, table *Table) error {
-	m.statementsSinceLastGC += stats.SQLStatementBatchSize
+func (m *GCManager) Counter(c *Cycle, table *Table) error {
+	m.statementsSinceLastGC += c.Blueprint.SQLStatementBatchSize
 	if m.statementsSinceLastGC > 150 {
 		m.statementsSinceLastGC = 0
-		if err := c.CliQuery("gc"); err != nil {
+		if _, err := c.CliQuery("gc"); err != nil {
 			return errors.Wrap(err)
 		}
 	}
@@ -28,8 +35,8 @@ func (m *GCManager) Counter(c *Cycle, stats *CycleStats, table *Table) error {
 }
 
 // Finish runs GC once all of the data has been written to the repository.
-func (m *GCManager) Finish(c *Cycle, stats *CycleStats) error {
-	if err := c.CliQuery("gc"); err != nil {
+func (m *GCManager) Finish(c *Cycle) error {
+	if _, err := c.CliQuery("gc"); err != nil {
 		return errors.Wrap(err)
 	}
 	return nil

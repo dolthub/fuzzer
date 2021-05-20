@@ -32,8 +32,9 @@ type TableData struct {
 
 // TableDataCursor returns a table's data, one row at a time.
 type TableDataCursor struct {
-	rows *sql.Rows
-	td   *TableData
+	rows     *sql.Rows
+	template Row
+	td       *TableData
 }
 
 // CreateTableData creates a new TableData and returns it.
@@ -156,8 +157,9 @@ func (td *TableData) GetRowCursor() (*TableDataCursor, error) {
 		return nil, errors.Wrap(err)
 	}
 	return &TableDataCursor{
-		rows: outRows,
-		td:   td,
+		rows:     outRows,
+		template: td.ConstructTemplateRow(),
+		td:       td,
 	}, nil
 }
 
@@ -208,20 +210,16 @@ func (td *TableData) Close() {
 // NextRow returns the next row from the cursor. If there are no more rows to return, returns false.
 func (tdc *TableDataCursor) NextRow() (Row, bool, error) {
 	if tdc.rows.Next() {
-		//TODO: this should take the total number of columns
-		rVals := make([]types.Value, 1)
-		iVals := make([]interface{}, len(rVals))
-		for i := range rVals {
-			iVals[i] = types.NewValueScanner(&rVals[i])
+		row := tdc.template.Copy()
+		iVals := make([]interface{}, len(row.Values))
+		for i := range row.Values {
+			iVals[i] = types.NewValueScanner(&row.Values[i])
 		}
 		err := tdc.rows.Scan(iVals...)
 		if err != nil {
 			return Row{}, false, errors.Wrap(err)
 		}
-		return Row{
-			Values:    rVals,
-			PkColsLen: 1,
-		}, true, nil
+		return row, true, nil
 	}
 	return Row{}, false, nil
 }

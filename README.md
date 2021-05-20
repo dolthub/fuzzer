@@ -54,6 +54,7 @@ Commands are a way to interact with the generated repositories in some way, or t
     * Provides a regex that generated names are matched against. If the name fails the regex, then a new one is generated until a passing name is found. If we try 10,000,000 times and still fail, then we abort the cycle.
 * Amounts
     * Specifies the range for that value in the format `[x, y]`, where `x` is the lower bound and `y` is the upper bound (both inclusive). For example, `Rows = [10, 1000]` means that all generated repositories will contain tables with at least 10 rows but no more than 1000.
+    * For `Rows`, the row target is an approximation, so although the upperbound is set to `1000`, it may go over _slightly_ by a few rows in rare instances.
 * Statement Distribution
     * Specifies the rough distribution of the SQL operations. The percentage frequency is determined by the statement's number divided by the sum of all statement' numbers. If a range is given rather than a number, then each cycle will choose a number from the range. A value of 0 will prevent a statement from occurring.
     * It is recommended to set DELETE to a value less than the sum of INSERT and REPLACE, otherwise you may dramatically increase cycle run times.

@@ -10,6 +10,7 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 
+	"github.com/dolthub/fuzzer/blueprint"
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/ranges"
 )
@@ -18,80 +19,85 @@ import (
 // any commands obtained from the planner.
 type Cycle struct {
 	Name          string
-	planner       *Planner
+	Planner       *Planner
+	Blueprint     *blueprint.Blueprint
 	statementDist *ranges.DistributionCenter
 	interfaceDist *ranges.DistributionCenter
 	typeDist      *ranges.DistributionCenter
 	nameRegexes   *nameRegexes
 	usedNames     map[string]struct{}
-	Branches      []*Branch
+	branches      []*Branch
+	currentBranch int
 	curBranch     *Branch
-	stats         *CycleStats
-	Logger        Logger
+	logger        Logger
+	actionQueue   chan func(*Cycle) error
+	hookQueue     chan Hook
 }
 
 // newCycle returns a *Cycle.
 func newCycle(planner *Planner) (*Cycle, error) {
-	nameRegexes, err := newNameRegexes(planner.base)
+	nameRegexes, err := newNameRegexes(planner.Base)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 	statementDist, err := ranges.NewDistributionCenter(
-		&InsertStatement{planner.base.StatementDistribution.Insert},
-		&ReplaceStatement{planner.base.StatementDistribution.Replace},
-		&UpdateStatement{planner.base.StatementDistribution.Update},
-		&DeleteStatement{planner.base.StatementDistribution.Delete},
+		&InsertStatement{planner.Base.StatementDistribution.Insert},
+		&ReplaceStatement{planner.Base.StatementDistribution.Replace},
+		&UpdateStatement{planner.Base.StatementDistribution.Update},
+		&DeleteStatement{planner.Base.StatementDistribution.Delete},
 	)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 	typeDist, err := ranges.NewDistributionCenter(
-		&planner.base.Types.Bigint,
-		&planner.base.Types.BigintUnsigned,
-		&planner.base.Types.Binary,
-		&planner.base.Types.Bit,
-		&planner.base.Types.Blob,
-		&planner.base.Types.Char,
-		&planner.base.Types.Date,
-		&planner.base.Types.Datetime,
-		&planner.base.Types.Decimal,
-		&planner.base.Types.Double,
-		&planner.base.Types.Enum,
-		&planner.base.Types.Float,
-		&planner.base.Types.Int,
-		&planner.base.Types.IntUnsigned,
-		&planner.base.Types.Longblob,
-		&planner.base.Types.Longtext,
-		&planner.base.Types.Mediumblob,
-		&planner.base.Types.Mediumint,
-		&planner.base.Types.MediumintUnsigned,
-		&planner.base.Types.Mediumtext,
-		&planner.base.Types.Set,
-		&planner.base.Types.Smallint,
-		&planner.base.Types.SmallintUnsigned,
-		&planner.base.Types.Text,
-		&planner.base.Types.Time,
-		&planner.base.Types.Timestamp,
-		&planner.base.Types.Tinyblob,
-		&planner.base.Types.Tinyint,
-		&planner.base.Types.TinyintUnsigned,
-		&planner.base.Types.Tinytext,
-		&planner.base.Types.Varbinary,
-		&planner.base.Types.Varchar,
-		&planner.base.Types.Year,
+		&planner.Base.Types.Bigint,
+		&planner.Base.Types.BigintUnsigned,
+		&planner.Base.Types.Binary,
+		&planner.Base.Types.Bit,
+		&planner.Base.Types.Blob,
+		&planner.Base.Types.Char,
+		&planner.Base.Types.Date,
+		&planner.Base.Types.Datetime,
+		&planner.Base.Types.Decimal,
+		&planner.Base.Types.Double,
+		&planner.Base.Types.Enum,
+		&planner.Base.Types.Float,
+		&planner.Base.Types.Int,
+		&planner.Base.Types.IntUnsigned,
+		&planner.Base.Types.Longblob,
+		&planner.Base.Types.Longtext,
+		&planner.Base.Types.Mediumblob,
+		&planner.Base.Types.Mediumint,
+		&planner.Base.Types.MediumintUnsigned,
+		&planner.Base.Types.Mediumtext,
+		&planner.Base.Types.Set,
+		&planner.Base.Types.Smallint,
+		&planner.Base.Types.SmallintUnsigned,
+		&planner.Base.Types.Text,
+		&planner.Base.Types.Time,
+		&planner.Base.Types.Timestamp,
+		&planner.Base.Types.Tinyblob,
+		&planner.Base.Types.Tinyint,
+		&planner.Base.Types.TinyintUnsigned,
+		&planner.Base.Types.Tinytext,
+		&planner.Base.Types.Varbinary,
+		&planner.Base.Types.Varchar,
+		&planner.Base.Types.Year,
 	)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 	return &Cycle{
-		planner:       planner,
+		Planner:       planner,
+		Blueprint:     &blueprint.Blueprint{},
 		usedNames:     map[string]struct{}{"master": {}},
 		statementDist: statementDist,
 		typeDist:      typeDist,
 		nameRegexes:   nameRegexes,
-		Branches:      []*Branch{NewMasterBranch()},
-		stats:         &CycleStats{},
-		Logger:        &fakeLogger{},
+		currentBranch: 0,
+		logger:        &fakeLogger{},
+		actionQueue:   make(chan func(*Cycle) error, 300),
+		hookQueue:     make(chan Hook, 100),
 	}, nil
 }
 
@@ -106,17 +112,17 @@ func (c *Cycle) Run() (err error) {
 			}
 		}
 		if err != nil {
-			_ = c.Logger.WriteLine(LogType_INFO,
+			_ = c.logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished unsuccessfully: %s", time.Now().Format("2006-01-02 15:04:05")))
-			_ = c.Logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
-			_ = c.Logger.Close()
+			_ = c.logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
+			_ = c.logger.Close()
 		} else {
-			cErr := c.Logger.WriteLine(LogType_INFO,
+			cErr := c.logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished successfully: %s", time.Now().Format("2006-01-02 15:04:05")))
 			if cErr != nil {
 				err = errors.Wrap(cErr)
 			}
-			cErr = c.Logger.Close()
+			cErr = c.logger.Close()
 			if err == nil && cErr != nil {
 				err = errors.Wrap(cErr)
 			}
@@ -129,51 +135,122 @@ func (c *Cycle) Run() (err error) {
 	}
 
 	defer func() {
-		var cErr error
-		for i := 0; i < len(c.planner.Hooks.cycleEnded); i++ {
-			if eErr := c.planner.Hooks.cycleEnded[i](c); eErr != nil && cErr == nil {
-				cErr = errors.Wrap(err)
-			}
-		}
-		if err == nil && cErr != nil {
-			err = cErr
+		if hookErr := c.Planner.Hooks.RunHook(Hook{
+			Type:  HookType_CycleEnded,
+			Cycle: c,
+		}); hookErr != nil && err == nil {
+			err = errors.Wrap(hookErr)
 		}
 	}()
-	for i := 0; i < len(c.planner.Hooks.cycleStarted); i++ {
-		if err = c.planner.Hooks.cycleStarted[i](c, c.stats); err != nil {
-			return errors.Wrap(err)
+	c.hookQueue <- Hook{
+		Type:  HookType_CycleInitialized,
+		Cycle: c,
+	}
+	c.hookQueue <- Hook{
+		Type:  HookType_CycleStarted,
+		Cycle: c,
+	}
+
+	for breakOuter := false; !breakOuter; {
+		select {
+		case action := <-c.actionQueue:
+			err = action(c)
+			if err != nil {
+				return errors.Wrap(err)
+			}
+		default:
+			breakOuter = true
+		}
+		for breakInner := false; !breakInner; {
+			select {
+			case hook := <-c.hookQueue:
+				breakOuter = false
+				err = c.Planner.Hooks.RunHook(hook)
+				if err != nil {
+					return errors.Wrap(err)
+				}
+			default:
+				breakInner = true
+			}
 		}
 	}
 
-	if err = c.run(); err != nil {
-		return errors.Wrap(err)
-	}
-
-	for i := 0; i < len(c.planner.Hooks.repositoryFinished); i++ {
-		if err = c.planner.Hooks.repositoryFinished[i](c, c.stats); err != nil {
+	for i := 0; i < len(c.Planner.Hooks.repositoryFinished); i++ {
+		if err = c.Planner.Hooks.repositoryFinished[i](c); err != nil {
 			return errors.Wrap(err)
 		}
 	}
 	return nil
 }
 
-// CliQuery is used to run dolt commands on the CLI.
-func (c *Cycle) CliQuery(args ...string) error {
-	err := c.Logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, args...), " "))
+// GetBranchNames returns all of the branch names.
+func (c *Cycle) GetBranchNames() []string {
+	branchNames := make([]string, len(c.branches))
+	for i := 0; i < len(branchNames); i++ {
+		branchNames[i] = c.branches[i].Name
+	}
+	return branchNames
+}
+
+// GetCurrentBranch returns the current branch that Dolt is on.
+func (c *Cycle) GetCurrentBranch() *Branch {
+	return c.branches[c.currentBranch]
+}
+
+// SwitchCurrentBranch switches the current branch to the given branch.
+func (c *Cycle) SwitchCurrentBranch(targetBranch string) error {
+	prevBranch := c.GetCurrentBranch()
+	_, err := prevBranch.Commit(c, false)
 	if err != nil {
 		return errors.Wrap(err)
 	}
+	for i := range c.branches {
+		if c.branches[i].Name == targetBranch {
+			if err != nil {
+				return errors.Wrap(err)
+			}
+			currentBranch := c.branches[i]
+			c.currentBranch = i
+			_, err = c.CliQuery("checkout", currentBranch.Name)
+			if err != nil {
+				return errors.Wrap(err)
+			}
+			c.hookQueue <- Hook{
+				Type:   HookType_BranchSwitched,
+				Cycle:  c,
+				Param1: prevBranch,
+				Param2: currentBranch,
+			}
+			return nil
+		}
+	}
+	return errors.New(fmt.Sprintf("could not find a branch with the name '%s' to switch to", targetBranch))
+}
+
+// QueueAction queues the given action.
+func (c *Cycle) QueueAction(f func(*Cycle) error) {
+	c.actionQueue <- f
+}
+
+// CliQuery is used to run dolt commands on the CLI.
+func (c *Cycle) CliQuery(args ...string) (string, error) {
+	err := c.logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, args...), " "))
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	stdOutBuffer := &bytes.Buffer{}
 	stdErrBuffer := &bytes.Buffer{}
 	doltQuery := exec.Command("dolt", args...)
+	doltQuery.Stdout = stdOutBuffer
 	doltQuery.Stderr = stdErrBuffer
 	err = doltQuery.Run()
 	if stdErrBuffer.Len() > 0 {
-		return errors.New(stdErrBuffer.String())
+		return "", errors.New(stdErrBuffer.String())
 	}
 	if err != nil {
-		return errors.Wrap(err)
+		return "", errors.Wrap(err)
 	}
-	return nil
+	return strings.TrimSpace(stdOutBuffer.String()), nil
 }
 
 // UseInterface is used to run SQL queries. The cycle automatically manages which interface will be used (whether that
@@ -191,90 +268,19 @@ func (c *Cycle) UseInterface(expectedCalls int64, caller func(func(string) error
 	return nil
 }
 
-// run is the internal cycle loop.
-func (c *Cycle) run() error {
-	//TODO: handle multiple table creation, branch creation/switching, and committing
-	table, err := c.Branches[0].NewTable(c)
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	targetRowCount, err := c.planner.base.Amounts.Rows.RandomValue()
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	for {
-		consecutiveStatements, err := c.planner.base.InterfaceDistribution.ConsecutiveRange.RandomValue()
-		if err != nil {
-			return errors.Wrap(err)
-		}
-		c.stats.SQLStatementBatchSize = uint64(consecutiveStatements)
-		for i := 0; i < len(c.planner.Hooks.sqlStatementBatchStarted); i++ {
-			if err = c.planner.Hooks.sqlStatementBatchStarted[i](c, c.stats, table); err != nil {
-				return errors.Wrap(err)
-			}
-		}
-		consecutiveStatements = int64(c.stats.SQLStatementBatchSize)
-		err = c.UseInterface(consecutiveStatements, func(f func(string) error) error {
-			for i := int64(0); i < consecutiveStatements; i++ {
-				statement, err := c.statementDist.Get(1)
-				if err != nil {
-					return errors.Wrap(err)
-				}
-				statementStr, err := statement.(Statement).GenerateStatement(table)
-				if err != nil {
-					return errors.Wrap(err)
-				}
-
-				for j := 0; j < len(c.planner.Hooks.sqlStatementPreExecution); j++ {
-					if err = c.planner.Hooks.sqlStatementPreExecution[j](c, c.stats, statementStr); err != nil {
-						return errors.Wrap(err)
-					}
-				}
-				if err = f(statementStr); err != nil {
-					return errors.Wrap(err)
-				}
-				for j := 0; j < len(c.planner.Hooks.sqlStatementPostExecution); j++ {
-					if err = c.planner.Hooks.sqlStatementPostExecution[j](c, c.stats, statementStr); err != nil {
-						return errors.Wrap(err)
-					}
-				}
-			}
-			return nil
-		})
-		if err != nil {
-			return errors.Wrap(err)
-		}
-		for i := 0; i < len(c.planner.Hooks.sqlStatementBatchFinished); i++ {
-			if err = c.planner.Hooks.sqlStatementBatchFinished[i](c, c.stats, table); err != nil {
-				return errors.Wrap(err)
-			}
-		}
-		c.stats.SQLStatementsExecuted += uint64(consecutiveStatements)
-		c.stats.SQLStatementBatchSize = 0
-		rowCount, err := table.Data.GetRowCount()
-		if err != nil {
-			return errors.Wrap(err)
-		}
-		if rowCount >= targetRowCount {
-			break
-		}
-	}
-	return nil
-}
-
 // init creates the initial repository.
 func (c *Cycle) init() error {
 	var err error
-	c.stats.CycleStart = time.Now()
-	if c.stats.CycleStart.Add(-time.Second).Before(c.planner.lastRunStartTime) {
+	c.Blueprint.CycleStart = time.Now()
+	if c.Blueprint.CycleStart.Add(-time.Second).Before(c.Planner.lastRunStartTime) {
 		time.Sleep(time.Second)
-		c.stats.CycleStart = time.Now()
+		c.Blueprint.CycleStart = time.Now()
 	}
-	c.planner.lastRunStartTime = c.stats.CycleStart
-	dbName := c.stats.CycleStart.Format("20060102150405")
+	c.Planner.lastRunStartTime = c.Blueprint.CycleStart
+	dbName := c.Blueprint.CycleStart.Format("20060102150405")
 	c.Name = dbName
 
-	cycleDir := fmt.Sprintf("%s/%s", c.planner.workingDirectory, dbName)
+	cycleDir := fmt.Sprintf("%s/%s", c.Planner.workingDirectory, dbName)
 	err = os.Mkdir(cycleDir, os.ModeDir)
 	if err != nil {
 		return errors.Wrap(err)
@@ -284,35 +290,40 @@ func (c *Cycle) init() error {
 		return errors.Wrap(err)
 	}
 
-	if c.planner.base.Options.Logging {
+	if c.Planner.Base.Options.Logging {
 		logFile, err := os.OpenFile("./log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			return errors.Wrap(err)
 		}
-		c.Logger = &fileLogger{logFile}
+		c.logger = &fileLogger{logFile}
 	}
 
 	c.interfaceDist, err = ranges.NewDistributionCenter(
-		&CliQuery{c.planner.base.InterfaceDistribution.CLIQuery, c.Logger},
-		&CliBatch{c.planner.base.InterfaceDistribution.CLIBatch, c.Logger},
+		&CliQuery{c.Planner.Base.InterfaceDistribution.CLIQuery, c.logger},
+		&CliBatch{c.Planner.Base.InterfaceDistribution.CLIBatch, c.logger},
 		&SqlServer{
-			r:      c.planner.base.InterfaceDistribution.SQLServer,
-			port:   c.planner.base.Options.Port,
+			r:      c.Planner.Base.InterfaceDistribution.SQLServer,
+			port:   c.Planner.Base.Options.Port,
 			dbName: dbName,
-			logger: c.Logger,
+			logger: c.logger,
 		},
 	)
 	if err != nil {
 		return errors.Wrap(err)
 	}
 
-	err = c.Logger.WriteLine(LogType_INFO, fmt.Sprintf("Cycle started: %s", c.stats.CycleStart.Format("2006-01-02 15:04:05")))
+	err = c.logger.WriteLine(LogType_INFO, fmt.Sprintf("Cycle started: %s", c.Blueprint.CycleStart.Format("2006-01-02 15:04:05")))
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	err = c.CliQuery("init")
+	_, err = c.CliQuery("init")
 	if err != nil {
 		return errors.Wrap(err)
 	}
+	masterBranch, err := NewMasterBranch(c)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	c.branches = []*Branch{masterBranch}
 	return nil
 }

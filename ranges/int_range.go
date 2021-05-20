@@ -29,6 +29,11 @@ func NewIntCollection(r [][]int64) []Int {
 	return coll
 }
 
+// Median returns the median of the range.
+func (r *Int) Median() int64 {
+	return ((r.Upperbound - r.Lowerbound) / 2) + r.Lowerbound
+}
+
 // RandomValue returns a random value between the inclusive bounds of the range.
 func (r *Int) RandomValue() (int64, error) {
 	if r.Lowerbound == r.Upperbound {
@@ -53,6 +58,25 @@ func (r *Int) RandomValueRestrictUpper(upperRestriction int64) (int64, error) {
 		upperbound = upperRestriction
 	} else if lowerbound == upperbound {
 		return upperbound, nil
+	}
+	v, err := rand.Uint64()
+	if err != nil {
+		return 0, errors.Wrap(err)
+	}
+	return int64(v%uint64(utils.AbsInt64(upperbound-lowerbound))) + lowerbound, nil
+}
+
+// RandomValueExpandLower returns a random value between the inclusive bounds of the range. If the expanded lower bound
+// is lower than the current lower bound, then it is substituted. If the expansion is greater than the current lower
+// bound, then it is ignored.
+func (r *Int) RandomValueExpandLower(lowerExpansion int64) (int64, error) {
+	lowerbound := r.Lowerbound
+	upperbound := r.Upperbound
+	if lowerExpansion < r.Lowerbound {
+		lowerbound = lowerExpansion
+	}
+	if r.Lowerbound == r.Upperbound {
+		return r.Lowerbound, nil
 	}
 	v, err := rand.Uint64()
 	if err != nil {

@@ -14,6 +14,7 @@ var (
 	errEmptyRangeColl = "%s must contain at least 1 range, but has none"
 	errRangeBackwards = "%s has the upper and lower bounds mixed"
 	errRangeNegative  = "%s cannot contain any negative numbers"
+	errRangeMinimum1  = "%s minimum must be >= 1"
 	errDistLowerbound = "%s needs at least one non-zero lower bound"
 )
 
@@ -95,9 +96,15 @@ func (c *configAmounts) Normalize() error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
+	if c.Branches[0] < 1 {
+		return errors.New(fmt.Sprintf(errRangeMinimum1, "Amounts.Branches"))
+	}
 	c.Tables, err = normalizeIntRange(c.Tables, "Amounts.Tables")
 	if err != nil {
 		return errors.Wrap(err)
+	}
+	if c.Tables[0] < 1 {
+		return errors.New(fmt.Sprintf(errRangeMinimum1, "Amounts.Tables"))
 	}
 	c.PrimaryKeys, err = normalizeIntRange(c.PrimaryKeys, "Amounts.Primary_Keys")
 	if err != nil {
@@ -106,6 +113,9 @@ func (c *configAmounts) Normalize() error {
 	c.Columns, err = normalizeIntRange(c.Columns, "Amounts.Columns")
 	if err != nil {
 		return errors.Wrap(err)
+	}
+	if c.Columns[0] < 1 {
+		return errors.New(fmt.Sprintf(errRangeMinimum1, "Amounts.Columns"))
 	}
 	c.Indexes, err = normalizeIntRange(c.Indexes, "Amounts.Indexes")
 	if err != nil {

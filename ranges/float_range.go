@@ -30,6 +30,11 @@ func NewFloatCollection(r [][]float64) []Float {
 	return coll
 }
 
+// Median returns the median of the range.
+func (r *Float) Median() float64 {
+	return ((r.Upperbound - r.Lowerbound) / 2) + r.Lowerbound
+}
+
 // RandomValue returns a random value between the inclusive bounds of the range.
 func (r *Float) RandomValue() (float64, error) {
 	if r.Lowerbound == r.Upperbound {

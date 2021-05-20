@@ -14,7 +14,7 @@ import (
 // cycle.
 type Planner struct {
 	Hooks            *Hooks
-	base             *parameters.Base
+	Base             *parameters.Base
 	workingDirectory string
 	lastRunStartTime time.Time
 }
@@ -27,12 +27,14 @@ func NewPlanner(base *parameters.Base) (*Planner, error) {
 	}
 	workingDirectory = filepath.ToSlash(workingDirectory)
 	hooks := &Hooks{}
+	(&BlueprintManager{}).Register(hooks)
+	(&RepositoryManager{}).Register(hooks)
 	if base.Options.ManualGC {
 		(&GCManager{}).Register(hooks)
 	}
 	return &Planner{
 		Hooks:            hooks,
-		base:             base,
+		Base:             base,
 		workingDirectory: workingDirectory,
 		lastRunStartTime: time.Unix(0, 0),
 	}, nil
