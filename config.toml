@@ -15,7 +15,7 @@ Primary_Keys = [1, 5]
 Columns = [1, 10]
 Indexes = [0, 10]
 Foreign_Key_Constraints = [0, 7]
-Rows = [1, 100]
+Rows = [25, 100]
 Index_Delay = [0]
 
 [Statement_Distribution]

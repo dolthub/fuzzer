@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -37,12 +38,12 @@ func (i *DateInstance) Get() (Value, error) {
 		return NilValue{}, errors.Wrap(err)
 	}
 	t := time.Unix(int64(v%(maxDatetime-minDatetime))+minDatetime, 0)
-	return StringValue(t.Format("2006-01-02")), nil
+	return DateValue{StringValue(t.Format("2006-01-02"))}, nil
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *DateInstance) TypeValue() Value {
-	return StringValue("")
+	return DateValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -56,4 +57,39 @@ func (i *DateInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *DateInstance) MaxValueCount() float64 {
 	return float64(3284635)
+}
+
+// DateValue is the Value type of a DateInstance.
+type DateValue struct {
+	StringValue
+}
+
+var _ Value = DateValue{}
+
+// Convert implements the Value interface.
+func (v DateValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v DateValue) Name() string {
+	return "DATE"
+}
+
+// MySQLString implements the Value interface.
+func (v DateValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v DateValue) SQLiteString() string {
+	return v.String()
 }

@@ -57,7 +57,7 @@ func (td *TableData) Exec(statement string) error {
 	return err
 }
 
-// ConstructTemplateRow creates a row with each value set to the equivalent types.Value for that position relative to its
+// ConstructTemplateRow creates a row with each value set to the equivalent types.ValuePrimitive for that position relative to its
 // column on the table. This is intended to be used as a destination row for reading from table data.
 func (td *TableData) ConstructTemplateRow() Row {
 	pkColsLen := len(td.pkCols)
@@ -152,7 +152,15 @@ func (td *TableData) GetAllRows() ([]Row, error) {
 
 // GetRowCursor returns a cursor for the table data.
 func (td *TableData) GetRowCursor() (*TableDataCursor, error) {
-	outRows, err := td.connection.QueryContext(context.Background(), fmt.Sprintf("SELECT * FROM `%s`;", td.tableName))
+	orderBy := ""
+	for i := 1; i <= len(td.pkCols); i++ {
+		if i == 1 {
+			orderBy += " ORDER BY 1"
+		} else {
+			orderBy += fmt.Sprintf(", %d", i)
+		}
+	}
+	outRows, err := td.connection.QueryContext(context.Background(), fmt.Sprintf("SELECT * FROM `%s`%s;", td.tableName, orderBy))
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -191,7 +199,7 @@ func (td *TableData) Copy() (*TableData, error) {
 
 	row, ok, err := oldDataCursor.NextRow()
 	for ; err == nil && ok; row, ok, err = oldDataCursor.NextRow() {
-		err = newTableData.Exec(fmt.Sprintf("INSERT INTO `%s` VALUES (%s);", newTableData.tableName, row.MySQLString()))
+		err = newTableData.Exec(fmt.Sprintf("INSERT INTO `%s` VALUES (%s);", newTableData.tableName, row.SQLiteString()))
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
@@ -204,6 +212,9 @@ func (td *TableData) Copy() (*TableData, error) {
 
 // Close closes the underlying connection and frees resources.
 func (td *TableData) Close() {
+	defer func() {
+		_ = recover()
+	}()
 	_ = td.connection.Close()
 }
 

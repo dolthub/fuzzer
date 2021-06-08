@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *BlobInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return VarbinaryValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *BlobInstance) TypeValue() Value {
-	return StringValue("")
+	return VarbinaryValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -61,4 +62,39 @@ func (i *BlobInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *BlobInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 65536)
+}
+
+// BlobValue is the Value type of a BlobInstance.
+type BlobValue struct {
+	StringValue
+}
+
+var _ Value = BlobValue{}
+
+// Convert implements the Value interface.
+func (v BlobValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v BlobValue) Name() string {
+	return "BLOB"
+}
+
+// MySQLString implements the Value interface.
+func (v BlobValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v BlobValue) SQLiteString() string {
+	return v.String()
 }

@@ -66,7 +66,7 @@ func (r Row) Value() []types.Value {
 func (r Row) MySQLString() string {
 	vals := make([]string, len(r.Values))
 	for i := 0; i < len(vals); i++ {
-		vals[i] = r.Values[i].String()
+		vals[i] = r.Values[i].MySQLString()
 	}
 	return strings.Join(vals, ",")
 }
@@ -78,6 +78,19 @@ func (r Row) SQLiteString() string {
 		vals[i] = r.Values[i].SQLiteString()
 	}
 	return strings.Join(vals, ",")
+}
+
+// Equals returns whether the given row is equivalent to the calling row.
+func (r Row) Equals(otherRow Row) bool {
+	if len(r.Values) != len(otherRow.Values) {
+		return false
+	}
+	for i := 0; i < len(r.Values); i++ {
+		if r.Values[i] != otherRow.Values[i] {
+			return false
+		}
+	}
+	return true
 }
 
 // Copy returns a copy of this row.

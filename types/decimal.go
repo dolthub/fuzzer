@@ -69,12 +69,12 @@ func (i *DecimalInstance) Get() (Value, error) {
 	for idx := 0; idx < i.scale; strIdx, idx = strIdx+1, idx+1 {
 		strBytes[strIdx] = (afterDecimal[idx] % 10) + 48
 	}
-	return StringValue(strBytes), err
+	return DecimalValue{StringValue(strBytes)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *DecimalInstance) TypeValue() Value {
-	return StringValue("")
+	return DecimalValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -88,4 +88,39 @@ func (i *DecimalInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *DecimalInstance) MaxValueCount() float64 {
 	return 2 * math.Pow10(i.precision)
+}
+
+// DecimalValue is the Value type of a DecimalInstance.
+type DecimalValue struct {
+	StringValue
+}
+
+var _ Value = DecimalValue{}
+
+// Convert implements the Value interface.
+func (v DecimalValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v DecimalValue) Name() string {
+	return "DECIMAL"
+}
+
+// MySQLString implements the Value interface.
+func (v DecimalValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v DecimalValue) SQLiteString() string {
+	return v.String()
 }

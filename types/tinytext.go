@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *TinytextInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return TinytextValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *TinytextInstance) TypeValue() Value {
-	return StringValue("")
+	return TinytextValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -58,4 +59,39 @@ func (i *TinytextInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *TinytextInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 64)
+}
+
+// TinytextValue is the Value type of a TinytextInstance.
+type TinytextValue struct {
+	StringValue
+}
+
+var _ Value = TinytextValue{}
+
+// Convert implements the Value interface.
+func (v TinytextValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v TinytextValue) Name() string {
+	return "TINYTEXT"
+}
+
+// MySQLString implements the Value interface.
+func (v TinytextValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v TinytextValue) SQLiteString() string {
+	return v.String()
 }

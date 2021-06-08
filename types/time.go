@@ -41,12 +41,12 @@ func (i *TimeInstance) Get() (Value, error) {
 	if vAbs < 0 {
 		vAbs *= -1
 	}
-	return StringValue(fmt.Sprintf("%d:%02d:%02d", v/3600, (vAbs/60)%60, vAbs%60)), nil
+	return TimeValue{StringValue(fmt.Sprintf("%d:%02d:%02d", v/3600, (vAbs/60)%60, vAbs%60))}, nil
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *TimeInstance) TypeValue() Value {
-	return StringValue("")
+	return TimeValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -60,4 +60,39 @@ func (i *TimeInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *TimeInstance) MaxValueCount() float64 {
 	return float64(6040798)
+}
+
+// TimeValue is the Value type of a TimeInstance.
+type TimeValue struct {
+	StringValue
+}
+
+var _ Value = TimeValue{}
+
+// Convert implements the Value interface.
+func (v TimeValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v TimeValue) Name() string {
+	return "TIME"
+}
+
+// MySQLString implements the Value interface.
+func (v TimeValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v TimeValue) SQLiteString() string {
+	return v.String()
 }

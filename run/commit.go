@@ -1,5 +1,7 @@
 package run
 
+import "github.com/dolthub/fuzzer/errors"
+
 // Commit represents either a commit or the working set in dolt.
 type Commit struct {
 	Hash        string
@@ -17,7 +19,7 @@ func (c *Commit) Copy() (*Commit, error) {
 	for i := 0; i < len(c.Tables); i++ {
 		tables[i], err = c.Tables[i].Copy()
 		if err != nil {
-			return &Commit{}, nil
+			return &Commit{}, errors.Wrap(err)
 		}
 	}
 	foreignKeys := make([]*ForeignKey, len(c.ForeignKeys))

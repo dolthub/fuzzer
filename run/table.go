@@ -1,7 +1,14 @@
 package run
 
 import (
+	"bytes"
+	"context"
+	"database/sql"
+	"fmt"
+	"os"
 	"strings"
+
+	"github.com/gocraft/dbr/v2"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/types"
@@ -15,6 +22,15 @@ type Table struct {
 	NonPKCols []*Column
 	Indexes   []*Index
 	Data      *TableData
+}
+
+// DoltDataCursor returns a Dolt repository's data, one row at a time.
+type DoltDataCursor struct {
+	conn     *dbr.Connection
+	rows     *sql.Rows
+	template Row
+	process  *os.Process
+	errBuf   *bytes.Buffer
 }
 
 // NewTable returns a *Table.
@@ -92,6 +108,33 @@ func (t *Table) CreateString(sqlite bool) string {
 	return sb.String()
 }
 
+// GetDoltCursor returns a cursor over Dolt's stored table data.
+func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
+	conn, process, stdErrBuffer, err := c.SqlServer.GetConnection()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	orderBy := ""
+	for i := 1; i <= len(t.PKCols); i++ {
+		if i == 1 {
+			orderBy += " ORDER BY 1"
+		} else {
+			orderBy += fmt.Sprintf(", %d", i)
+		}
+	}
+	outRows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT * FROM `%s`%s;", t.Name, orderBy))
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return &DoltDataCursor{
+		conn:     conn,
+		rows:     outRows,
+		template: t.Data.ConstructTemplateRow(),
+		process:  process,
+		errBuf:   stdErrBuffer,
+	}, nil
+}
+
 // Copy returns a deep copy of the table.
 func (t *Table) Copy() (*Table, error) {
 	pkCols := make([]*Column, len(t.PKCols))
@@ -118,6 +161,43 @@ func (t *Table) Copy() (*Table, error) {
 		Indexes:   indexes,
 		Data:      newData,
 	}, nil
+}
+
+// NextRow returns the next row from the cursor. If there are no more rows to return, returns false.
+func (ddc *DoltDataCursor) NextRow() (Row, bool, error) {
+	if ddc.rows.Next() {
+		row := ddc.template.Copy()
+		iVals := make([]interface{}, len(row.Values))
+		for i := range row.Values {
+			iVals[i] = types.NewValueScanner(&row.Values[i])
+		}
+		err := ddc.rows.Scan(iVals...)
+		if err != nil {
+			return Row{}, false, errors.Wrap(err)
+		}
+		return row, true, nil
+	}
+	return Row{}, false, nil
+}
+
+// Close closes the underlying cursor and frees resources.
+func (ddc *DoltDataCursor) Close() error {
+	rErr := ddc.rows.Close()
+	cErr := ddc.conn.Close()
+	pErr := ddc.process.Kill()
+	if ddc.errBuf.Len() > 0 {
+		return errors.New(ddc.errBuf.String())
+	}
+	if rErr != nil {
+		return errors.Wrap(rErr)
+	}
+	if cErr != nil {
+		return errors.Wrap(cErr)
+	}
+	if pErr != nil {
+		return errors.Wrap(cErr)
+	}
+	return nil
 }
 
 // Column represents a table column in dolt.

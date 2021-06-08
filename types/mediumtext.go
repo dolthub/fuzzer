@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *MediumtextInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return MediumtextValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *MediumtextInstance) TypeValue() Value {
-	return StringValue("")
+	return MediumtextValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -58,4 +59,39 @@ func (i *MediumtextInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *MediumtextInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 4194304)
+}
+
+// MediumtextValue is the Value type of a MediumtextInstance.
+type MediumtextValue struct {
+	StringValue
+}
+
+var _ Value = MediumtextValue{}
+
+// Convert implements the Value interface.
+func (v MediumtextValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v MediumtextValue) Name() string {
+	return "MEDIUMTEXT"
+}
+
+// MySQLString implements the Value interface.
+func (v MediumtextValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v MediumtextValue) SQLiteString() string {
+	return v.String()
 }

@@ -3,6 +3,7 @@ package run
 import (
 	"bytes"
 	"fmt"
+	"os"
 	"os/exec"
 
 	"github.com/gocraft/dbr/v2"
@@ -170,4 +171,24 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 	}
 
 	return serverErr
+}
+
+// GetConnection returns a connection to the Dolt database for use with querying table data.
+func (c *SqlServer) GetConnection() (*dbr.Connection, *os.Process, *bytes.Buffer, error) {
+	stdErrBuffer := &bytes.Buffer{}
+	doltSqlServer := exec.Command("dolt", "sql-server", fmt.Sprintf("-P=%d", c.port))
+	doltSqlServer.Stderr = stdErrBuffer
+	go func() {
+		_ = doltSqlServer.Run()
+	}()
+	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "localhost", c.port), nil)
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err)
+	}
+	_ = conn.Ping()
+	_, err = conn.Exec(fmt.Sprintf("USE `%s`;", c.dbName))
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err)
+	}
+	return conn, doltSqlServer.Process, stdErrBuffer, nil
 }

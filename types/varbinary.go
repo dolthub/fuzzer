@@ -49,12 +49,12 @@ func (i *VarbinaryInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return VarbinaryValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *VarbinaryInstance) TypeValue() Value {
-	return StringValue("")
+	return VarbinaryValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -68,4 +68,39 @@ func (i *VarbinaryInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *VarbinaryInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+}
+
+// VarbinaryValue is the Value type of a VarbinaryInstance.
+type VarbinaryValue struct {
+	StringValue
+}
+
+var _ Value = VarbinaryValue{}
+
+// Convert implements the Value interface.
+func (v VarbinaryValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v VarbinaryValue) Name() string {
+	return "VARBINARY"
+}
+
+// MySQLString implements the Value interface.
+func (v VarbinaryValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v VarbinaryValue) SQLiteString() string {
+	return v.String()
 }

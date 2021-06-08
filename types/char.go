@@ -3,6 +3,7 @@ package types
 import (
 	"fmt"
 	"math"
+	"strings"
 
 	"github.com/dolthub/go-mysql-server/sql"
 
@@ -62,12 +63,12 @@ func (i *CharInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return CharValue{StringValue(v), i.charLength}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *CharInstance) TypeValue() Value {
-	return StringValue("")
+	return CharValue{StringValue(""), i.charLength}
 }
 
 // Name implements the TypeInstance interface.
@@ -81,4 +82,40 @@ func (i *CharInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *CharInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+}
+
+// CharValue is the Value type of a CharInstance.
+type CharValue struct {
+	StringValue
+	charLength int
+}
+
+var _ Value = CharValue{}
+
+// Convert implements the Value interface.
+func (v CharValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(strings.TrimSuffix(val, " "))
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v CharValue) Name() string {
+	return "CHAR"
+}
+
+// MySQLString implements the Value interface.
+func (v CharValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v CharValue) SQLiteString() string {
+	return v.String()
 }

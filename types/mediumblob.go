@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *MediumblobInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return MediumblobValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *MediumblobInstance) TypeValue() Value {
-	return StringValue("")
+	return MediumblobValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -61,4 +62,39 @@ func (i *MediumblobInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *MediumblobInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 16777216)
+}
+
+// MediumblobValue is the Value type of a MediumblobInstance.
+type MediumblobValue struct {
+	StringValue
+}
+
+var _ Value = MediumblobValue{}
+
+// Convert implements the Value interface.
+func (v MediumblobValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v MediumblobValue) Name() string {
+	return "MEDIUMBLOB"
+}
+
+// MySQLString implements the Value interface.
+func (v MediumblobValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v MediumblobValue) SQLiteString() string {
+	return v.String()
 }

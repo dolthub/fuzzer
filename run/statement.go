@@ -194,7 +194,7 @@ func valsToColumnEquals(colNames []*Column, vals []types.Value) ([]string, error
 	}
 	s := make([]string, len(colNames))
 	for i := 0; i < len(colNames); i++ {
-		s[i] = fmt.Sprintf("`%s` = %s", colNames[i].Name, vals[i].String())
+		s[i] = fmt.Sprintf("`%s` = %s", colNames[i].Name, vals[i].MySQLString())
 	}
 	return s, nil
 }

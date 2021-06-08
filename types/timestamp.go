@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *TimestampInstance) Get() (Value, error) {
 		return NilValue{}, errors.Wrap(err)
 	}
 	t := time.Unix(int64((v%(maxTimestamp-minTimestamp))+minTimestamp), 0)
-	return StringValue(t.UTC().Format("2006-01-02 15:04:05")), nil
+	return TimestampValue{StringValue(t.UTC().Format("2006-01-02 15:04:05"))}, nil
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *TimestampInstance) TypeValue() Value {
-	return StringValue("")
+	return TimestampValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -61,4 +62,39 @@ func (i *TimestampInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *TimestampInstance) MaxValueCount() float64 {
 	return float64(maxTimestamp - minTimestamp)
+}
+
+// TimestampValue is the Value type of a TimestampInstance.
+type TimestampValue struct {
+	StringValue
+}
+
+var _ Value = TimestampValue{}
+
+// Convert implements the Value interface.
+func (v TimestampValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v TimestampValue) Name() string {
+	return "TIMESTAMP"
+}
+
+// MySQLString implements the Value interface.
+func (v TimestampValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v TimestampValue) SQLiteString() string {
+	return v.String()
 }

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *LongblobInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return LongblobValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *LongblobInstance) TypeValue() Value {
-	return StringValue("")
+	return LongblobValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -61,4 +62,39 @@ func (i *LongblobInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *LongblobInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 4294967296)
+}
+
+// LongblobValue is the Value type of a LongblobInstance.
+type LongblobValue struct {
+	StringValue
+}
+
+var _ Value = LongblobValue{}
+
+// Convert implements the Value interface.
+func (v LongblobValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v LongblobValue) Name() string {
+	return "LONGBLOB"
+}
+
+// MySQLString implements the Value interface.
+func (v LongblobValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v LongblobValue) SQLiteString() string {
+	return v.String()
 }

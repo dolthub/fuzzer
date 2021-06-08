@@ -1,7 +1,12 @@
 package types
 
 import (
+	"fmt"
 	"math"
+	"strconv"
+	"unsafe"
+
+	"github.com/dolthub/fuzzer/errors"
 
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
@@ -32,12 +37,12 @@ var _ TypeInstance = (*SmallintUnsignedInstance)(nil)
 // Get implements the TypeInstance interface.
 func (i *SmallintUnsignedInstance) Get() (Value, error) {
 	v, err := rand.Uint16()
-	return Uint16Value(v), err
+	return SmallintUnsignedValue{Uint16Value(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *SmallintUnsignedInstance) TypeValue() Value {
-	return Uint16Value(0)
+	return SmallintUnsignedValue{Uint16Value(0)}
 }
 
 // Name implements the TypeInstance interface.
@@ -48,4 +53,67 @@ func (i *SmallintUnsignedInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *SmallintUnsignedInstance) MaxValueCount() float64 {
 	return float64(math.MaxUint16)
+}
+
+// SmallintUnsignedValue is the Value type of a SmallintUnsignedInstance.
+type SmallintUnsignedValue struct {
+	Uint16Value
+}
+
+var _ Value = SmallintUnsignedValue{}
+
+// Convert implements the Value interface.
+func (v SmallintUnsignedValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case uint:
+		v.Uint16Value = Uint16Value(val)
+	case int:
+		v.Uint16Value = Uint16Value(val)
+	case uint8:
+		v.Uint16Value = Uint16Value(val)
+	case int8:
+		v.Uint16Value = Uint16Value(val)
+	case uint16:
+		v.Uint16Value = Uint16Value(val)
+	case int16:
+		v.Uint16Value = Uint16Value(val)
+	case uint32:
+		v.Uint16Value = Uint16Value(val)
+	case int32:
+		v.Uint16Value = Uint16Value(val)
+	case uint64:
+		v.Uint16Value = Uint16Value(val)
+	case int64:
+		v.Uint16Value = Uint16Value(val)
+	case string:
+		pVal, err := strconv.ParseUint(val, 10, 16)
+		if err != nil {
+			return nil, errors.Wrap(err)
+		}
+		v.Uint16Value = Uint16Value(pVal)
+	case []uint8:
+		pVal, err := strconv.ParseUint(*(*string)(unsafe.Pointer(&val)), 10, 16)
+		if err != nil {
+			return nil, errors.Wrap(err)
+		}
+		v.Uint16Value = Uint16Value(pVal)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v SmallintUnsignedValue) Name() string {
+	return "SMALLINT UNSIGNED"
+}
+
+// MySQLString implements the Value interface.
+func (v SmallintUnsignedValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v SmallintUnsignedValue) SQLiteString() string {
+	return v.String()
 }

@@ -62,12 +62,12 @@ func (i *VarcharInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return VarcharValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *VarcharInstance) TypeValue() Value {
-	return StringValue("")
+	return VarcharValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -81,4 +81,39 @@ func (i *VarcharInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *VarcharInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+}
+
+// VarcharValue is the Value type of a VarcharInstance.
+type VarcharValue struct {
+	StringValue
+}
+
+var _ Value = VarcharValue{}
+
+// Convert implements the Value interface.
+func (v VarcharValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v VarcharValue) Name() string {
+	return "VARCHAR"
+}
+
+// MySQLString implements the Value interface.
+func (v VarcharValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v VarcharValue) SQLiteString() string {
+	return v.String()
 }

@@ -21,6 +21,8 @@ type Cycle struct {
 	Name          string
 	Planner       *Planner
 	Blueprint     *blueprint.Blueprint
+	Logger        Logger
+	SqlServer     *SqlServer
 	statementDist *ranges.DistributionCenter
 	interfaceDist *ranges.DistributionCenter
 	typeDist      *ranges.DistributionCenter
@@ -29,7 +31,6 @@ type Cycle struct {
 	branches      []*Branch
 	currentBranch int
 	curBranch     *Branch
-	logger        Logger
 	actionQueue   chan func(*Cycle) error
 	hookQueue     chan Hook
 }
@@ -90,12 +91,12 @@ func newCycle(planner *Planner) (*Cycle, error) {
 	return &Cycle{
 		Planner:       planner,
 		Blueprint:     &blueprint.Blueprint{},
+		Logger:        &fakeLogger{},
 		usedNames:     map[string]struct{}{"master": {}},
 		statementDist: statementDist,
 		typeDist:      typeDist,
 		nameRegexes:   nameRegexes,
 		currentBranch: 0,
-		logger:        &fakeLogger{},
 		actionQueue:   make(chan func(*Cycle) error, 300),
 		hookQueue:     make(chan Hook, 100),
 	}, nil
@@ -112,19 +113,28 @@ func (c *Cycle) Run() (err error) {
 			}
 		}
 		if err != nil {
-			_ = c.logger.WriteLine(LogType_INFO,
+			_ = c.Logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished unsuccessfully: %s", time.Now().Format("2006-01-02 15:04:05")))
-			_ = c.logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
-			_ = c.logger.Close()
+			_ = c.Logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
+			_ = c.Logger.Close()
 		} else {
-			cErr := c.logger.WriteLine(LogType_INFO,
+			cErr := c.Logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished successfully: %s", time.Now().Format("2006-01-02 15:04:05")))
 			if cErr != nil {
 				err = errors.Wrap(cErr)
 			}
-			cErr = c.logger.Close()
+			cErr = c.Logger.Close()
 			if err == nil && cErr != nil {
 				err = errors.Wrap(cErr)
+			}
+		}
+		close(c.hookQueue)
+		close(c.actionQueue)
+		for _, branch := range c.branches {
+			for _, commit := range branch.Commits {
+				for _, table := range commit.Tables {
+					table.Data.Close()
+				}
 			}
 		}
 	}()
@@ -200,6 +210,9 @@ func (c *Cycle) GetCurrentBranch() *Branch {
 // SwitchCurrentBranch switches the current branch to the given branch.
 func (c *Cycle) SwitchCurrentBranch(targetBranch string) error {
 	prevBranch := c.GetCurrentBranch()
+	if targetBranch == prevBranch.Name {
+		return nil
+	}
 	_, err := prevBranch.Commit(c, false)
 	if err != nil {
 		return errors.Wrap(err)
@@ -234,7 +247,7 @@ func (c *Cycle) QueueAction(f func(*Cycle) error) {
 
 // CliQuery is used to run dolt commands on the CLI.
 func (c *Cycle) CliQuery(args ...string) (string, error) {
-	err := c.logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, args...), " "))
+	err := c.Logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, args...), " "))
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -295,24 +308,26 @@ func (c *Cycle) init() error {
 		if err != nil {
 			return errors.Wrap(err)
 		}
-		c.logger = &fileLogger{logFile}
+		c.Logger = &fileLogger{logFile}
 	}
 
+	sqlServer := &SqlServer{
+		r:      c.Planner.Base.InterfaceDistribution.SQLServer,
+		port:   c.Planner.Base.Options.Port,
+		dbName: dbName,
+		logger: c.Logger,
+	}
 	c.interfaceDist, err = ranges.NewDistributionCenter(
-		&CliQuery{c.Planner.Base.InterfaceDistribution.CLIQuery, c.logger},
-		&CliBatch{c.Planner.Base.InterfaceDistribution.CLIBatch, c.logger},
-		&SqlServer{
-			r:      c.Planner.Base.InterfaceDistribution.SQLServer,
-			port:   c.Planner.Base.Options.Port,
-			dbName: dbName,
-			logger: c.logger,
-		},
+		&CliQuery{c.Planner.Base.InterfaceDistribution.CLIQuery, c.Logger},
+		&CliBatch{c.Planner.Base.InterfaceDistribution.CLIBatch, c.Logger},
+		sqlServer,
 	)
 	if err != nil {
 		return errors.Wrap(err)
 	}
+	c.SqlServer = sqlServer
 
-	err = c.logger.WriteLine(LogType_INFO, fmt.Sprintf("Cycle started: %s", c.Blueprint.CycleStart.Format("2006-01-02 15:04:05")))
+	err = c.Logger.WriteLine(LogType_INFO, fmt.Sprintf("Cycle started: %s", c.Blueprint.CycleStart.Format("2006-01-02 15:04:05")))
 	if err != nil {
 		return errors.Wrap(err)
 	}

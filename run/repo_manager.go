@@ -1,7 +1,9 @@
 package run
 
 import (
+	"fmt"
 	"math"
+	"time"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
@@ -142,13 +144,7 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 				return nil
 			}
 		}
-		//TODO: run verification step, and have that output HookType_RepositoryFinished when it's done
-		if err = c.Planner.Hooks.RunHook(Hook{
-			Type:  HookType_RepositoryFinished,
-			Cycle: c,
-		}); err != nil {
-			return errors.Wrap(err)
-		}
+		c.QueueAction(m.ValidateRows)
 		return nil
 	}
 
@@ -203,5 +199,80 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 		return errors.Wrap(err)
 	}
 	c.QueueAction(m.MainLoop)
+	return nil
+}
+
+// ValidateRows validates all rows of each table on each branch according to the stored data.
+func (m *RepositoryManager) ValidateRows(c *Cycle) (retErr error) {
+	err := c.Logger.WriteLine(LogType_INFO,
+		fmt.Sprintf("Validating Data: %s", time.Now().Format("2006-01-02 15:04:05")))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+
+	for _, branchName := range c.GetBranchNames() {
+		err = c.SwitchCurrentBranch(branchName)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		for _, table := range c.GetCurrentBranch().GetWorkingSet().Tables {
+			// Using a function here to make use of the defer
+			err = (func() error {
+				internalCursor, err := table.Data.GetRowCursor()
+				if err != nil {
+					return errors.Wrap(err)
+				}
+				defer internalCursor.Close()
+				doltCursor, err := table.GetDoltCursor(c)
+				if err != nil {
+					return errors.Wrap(err)
+				}
+				defer func() {
+					err := doltCursor.Close()
+					if err != nil && retErr == nil {
+						retErr = errors.Wrap(err)
+					}
+				}()
+
+				var iRow Row
+				var ok bool
+				for iRow, ok, err = internalCursor.NextRow(); ok && err == nil; iRow, ok, err = internalCursor.NextRow() {
+					dRow, ok, err := doltCursor.NextRow()
+					if !ok {
+						return errors.New(fmt.Sprintf("On table `%s`, internal data contains more rows than Dolt", table.Name))
+					}
+					if err != nil {
+						return errors.Wrap(err)
+					}
+					if !iRow.Equals(dRow) {
+						return errors.New(fmt.Sprintf("On table `%s`, internal data contains [%s]\nDolt contains [%s]",
+							table.Name, iRow.MySQLString(), dRow.MySQLString()))
+					}
+				}
+				if err != nil {
+					return errors.Wrap(err)
+				}
+
+				_, ok, err = doltCursor.NextRow()
+				if ok {
+					return errors.New(fmt.Sprintf("On table `%s`, Dolt contains more rows than internal data", table.Name))
+				}
+				if err != nil {
+					return errors.Wrap(err)
+				}
+				return nil
+			})()
+			if err != nil {
+				return errors.Wrap(err)
+			}
+		}
+	}
+
+	if err = c.Planner.Hooks.RunHook(Hook{
+		Type:  HookType_RepositoryFinished,
+		Cycle: c,
+	}); err != nil {
+		return errors.Wrap(err)
+	}
 	return nil
 }

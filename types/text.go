@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *TextInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return TextValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *TextInstance) TypeValue() Value {
-	return StringValue("")
+	return TextValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -58,4 +59,39 @@ func (i *TextInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *TextInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 16384)
+}
+
+// TextValue is the Value type of a TextInstance.
+type TextValue struct {
+	StringValue
+}
+
+var _ Value = TextValue{}
+
+// Convert implements the Value interface.
+func (v TextValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v TextValue) Name() string {
+	return "TEXT"
+}
+
+// MySQLString implements the Value interface.
+func (v TextValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v TextValue) SQLiteString() string {
+	return v.String()
 }

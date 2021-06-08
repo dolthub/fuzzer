@@ -1,6 +1,7 @@
 package types
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -42,12 +43,12 @@ func (i *LongtextInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return StringValue(v), err
+	return LongtextValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *LongtextInstance) TypeValue() Value {
-	return StringValue("")
+	return LongtextValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -58,4 +59,39 @@ func (i *LongtextInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *LongtextInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), 4294967296)
+}
+
+// LongtextValue is the Value type of a LongtextInstance.
+type LongtextValue struct {
+	StringValue
+}
+
+var _ Value = LongtextValue{}
+
+// Convert implements the Value interface.
+func (v LongtextValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v LongtextValue) Name() string {
+	return "LONGTEXT"
+}
+
+// MySQLString implements the Value interface.
+func (v LongtextValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v LongtextValue) SQLiteString() string {
+	return v.String()
 }

@@ -19,9 +19,14 @@ github.com/denisenkom/go-mssqldb v0.0.0-20200910202707-1e08a3fab204 h1:tI48fqaIk
 github.com/denisenkom/go-mssqldb v0.0.0-20200910202707-1e08a3fab204/go.mod h1:xbL0rPBG9cCiLr28tMa8zpbdarY27NDyej4t/EjAShU=
 github.com/dolthub/go-mysql-server v0.8.1-0.20210324012016-b2b80c824d53 h1:8yd/P03q4vL3mxnPyKD2MAKkDnPg+wo8GtmmM7+ZRF0=
 github.com/dolthub/go-mysql-server v0.8.1-0.20210324012016-b2b80c824d53/go.mod h1:cthDGvIOWFk0LsMsgciFvdf88LPUCfQiDNzjOXphdLo=
+github.com/dolthub/go-mysql-server v0.10.1-0.20210603222011-4c1a2422c236 h1:CJ1hxi3di8i+Wv9Cko0AJAnZrbtaiXlP0pPWbsifwzk=
+github.com/dolthub/go-mysql-server v0.10.1-0.20210603222011-4c1a2422c236/go.mod h1:nY+4DzVnlryGHlnvkeDjplQH3SLBSymHs0woPHrBIfw=
 github.com/dolthub/sqllogictest/go v0.0.0-20201105013724-5123fc66e12c/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
+github.com/dolthub/sqllogictest/go v0.0.0-20201107003712-816f3ae12d81/go.mod h1:siLfyv2c92W1eN/R4QqG/+RjjX5W2+gCTRjZxBjI3TY=
 github.com/dolthub/vitess v0.0.0-20210322084751-90cd9f21567b h1:TMVdLfmMINkMaJDE7enctYco2hOTEEvdhJVur7GyfM4=
 github.com/dolthub/vitess v0.0.0-20210322084751-90cd9f21567b/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
+github.com/dolthub/vitess v0.0.0-20210530214338-7755381e6501 h1:QO+maZZoP4PUwS5Clk/lo5AvZ8J5jHevbC/tTAfLe70=
+github.com/dolthub/vitess v0.0.0-20210530214338-7755381e6501/go.mod h1:hUE8oSk2H5JZnvtlLBhJPYC8WZCA5AoSntdLTcBvdBM=
 github.com/emirpasic/gods v1.12.0 h1:QAUIPSaCu4G+POclxeqb3F+WPpdKqFGlw36+yOzGlrg=
 github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3ymbK86o=
 github.com/envoyproxy/go-control-plane v0.9.1-0.20191026205805-5f8ba28d4473/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
@@ -35,6 +40,8 @@ github.com/go-sql-driver/mysql v1.4.1 h1:g24URVg0OFbNUTx9qqY1IRZ9D9z3iPyi5zKhQZp
 github.com/go-sql-driver/mysql v1.4.1/go.mod h1:zAC/RDZ24gD3HViQzih4MyKcchzm+sOG5ZlKdlhCg5w=
 github.com/go-sql-driver/mysql v1.5.0 h1:ozyZYNQW3x3HtqT1jira07DN2PArx2v7/mN66gGcHOs=
 github.com/go-sql-driver/mysql v1.5.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
+github.com/go-sql-driver/mysql v1.6.0 h1:BCTh4TKNUYmOmMUcQ3IipzF5prigylS7XXjEkfCHuOE=
+github.com/go-sql-driver/mysql v1.6.0/go.mod h1:DCzpHaOWr8IXmIStZouvnhqoel9Qv2LBy8hT2VhHyBg=
 github.com/gocraft/dbr/v2 v2.7.1 h1:v/bqxEBTlzj9sDbFCmtO2K1M3foDnYtQn097VoMALCw=
 github.com/gocraft/dbr/v2 v2.7.1/go.mod h1:+q/T5TMzrc6BWFbcSzj7ixaaBJkbDfRsy9gq7eMsU1s=
 github.com/golang-sql/civil v0.0.0-20190719163853-cb61b32ac6fe h1:lXe2qZdvpiX5WZkZR4hgp4KJVfY3nMkvmwbVkpv1rVY=
@@ -146,6 +153,7 @@ golang.org/x/sys v0.0.0-20190422165155-953cdadca894/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20190926180325-855e68c8590b/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f h1:+Nyd8tzPX9R7BWHguqsrbFdRx3WQ/1ib8I44HXV5yTA=
 golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20210119212857-b64e53b001e4/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
 golang.org/x/text v0.3.3 h1:cokOdA+Jmi5PJGXLlLllQSgYigAEfHXJAERHVMaCc2k=

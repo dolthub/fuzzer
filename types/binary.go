@@ -28,33 +28,28 @@ func (b *Binary) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	return &BinaryInstance{int(charLength), ranges.NewInt([]int64{0, charLength})}, nil
+	return &BinaryInstance{int(charLength)}, nil
 }
 
 // BinaryInstance is the TypeInstance of Binary.
 type BinaryInstance struct {
 	charLength int
-	length     ranges.Int
 }
 
 var _ TypeInstance = (*BinaryInstance)(nil)
 
 // Get implements the TypeInstance interface.
 func (i *BinaryInstance) Get() (Value, error) {
-	n, err := i.length.RandomValue()
+	v, err := rand.String(i.charLength)
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	v, err := rand.String(int(n))
-	if err != nil {
-		return NilValue{}, errors.Wrap(err)
-	}
-	return StringValue(v), err
+	return BinaryValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *BinaryInstance) TypeValue() Value {
-	return StringValue("")
+	return BinaryValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -68,4 +63,39 @@ func (i *BinaryInstance) Name(sqlite bool) string {
 // MaxValueCount implements the TypeInstance interface.
 func (i *BinaryInstance) MaxValueCount() float64 {
 	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+}
+
+// BinaryValue is the Value type of a BinaryInstance.
+type BinaryValue struct {
+	StringValue
+}
+
+var _ Value = BinaryValue{}
+
+// Convert implements the Value interface.
+func (v BinaryValue) Convert(val interface{}) (Value, error) {
+	switch val := val.(type) {
+	case string:
+		v.StringValue = StringValue(val)
+	case []byte:
+		v.StringValue = StringValue(val)
+	default:
+		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
+	}
+	return v, nil
+}
+
+// Name implements the Value interface.
+func (v BinaryValue) Name() string {
+	return "BINARY"
+}
+
+// MySQLString implements the Value interface.
+func (v BinaryValue) MySQLString() string {
+	return v.String()
+}
+
+// SQLiteString implements the Value interface.
+func (v BinaryValue) SQLiteString() string {
+	return v.String()
 }
