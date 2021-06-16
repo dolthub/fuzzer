@@ -114,26 +114,10 @@ func (c *SqlServer) GetOccurrenceRate() (int64, error) {
 
 // ProvideInterface implements the Interface interface.
 func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err error) {
-	stdErrBuffer := &bytes.Buffer{}
 	doltSqlServer := exec.Command("dolt", "sql-server", fmt.Sprintf("-P=%d", c.port))
-	doltSqlServer.Stderr = stdErrBuffer
 
-	var serverErr error
 	go func() {
-		err := doltSqlServer.Run()
-		if err != nil {
-			if stdErrBuffer.Len() > 0 {
-				serverErr = errors.New(stdErrBuffer.String())
-				return
-			} else {
-				serverErr = err
-				return
-			}
-		}
-		if stdErrBuffer.Len() > 0 {
-			serverErr = errors.New(stdErrBuffer.String())
-			return
-		}
+		_ = doltSqlServer.Run()
 	}()
 	defer func() {
 		killErr := doltSqlServer.Process.Kill()
@@ -170,7 +154,7 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 		return errors.Wrap(err)
 	}
 
-	return serverErr
+	return nil
 }
 
 // GetConnection returns a connection to the Dolt database for use with querying table data.

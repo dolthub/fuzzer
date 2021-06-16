@@ -32,29 +32,33 @@ func (e *Enum) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	elements := make([]string, numOfElements)
+	elementMap := make(map[string]uint16)
 	addedElements := make(map[string]struct{})
 	for i := int64(0); i < numOfElements; {
 		elemLength, err := e.ElementNameLength.RandomValue()
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		elemName, err := rand.String(int(elemLength))
+		elemName, err := rand.StringExtendedAlphanumeric(int(elemLength))
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		lowerElemName := strings.ToLower(elemName)
 		if _, ok := addedElements[lowerElemName]; !ok {
 			elements[i] = elemName
+			elementMap[elemName] = uint16(i + 1)
 			addedElements[lowerElemName] = struct{}{}
 			i++
 		}
 	}
-	return &EnumInstance{elements}, nil
+	elementMap[""] = 0
+	return &EnumInstance{elements, elementMap}, nil
 }
 
 // EnumInstance is the TypeInstance of Enum.
 type EnumInstance struct {
-	elements []string
+	elements   []string
+	elementMap map[string]uint16
 }
 
 var _ TypeInstance = (*EnumInstance)(nil)
@@ -62,12 +66,12 @@ var _ TypeInstance = (*EnumInstance)(nil)
 // Get implements the TypeInstance interface.
 func (i *EnumInstance) Get() (Value, error) {
 	v, err := rand.Uint16()
-	return EnumValue{Uint16Value(v%uint16(len(i.elements))) + 1}, err
+	return EnumValue{Uint16Value(v%uint16(len(i.elements))) + 1, &i.elementMap}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *EnumInstance) TypeValue() Value {
-	return EnumValue{Uint16Value(0)}
+	return EnumValue{Uint16Value(0), &i.elementMap}
 }
 
 // Name implements the TypeInstance interface.
@@ -86,6 +90,7 @@ func (i *EnumInstance) MaxValueCount() float64 {
 // EnumValue is the Value type of a EnumInstance.
 type EnumValue struct {
 	Uint16Value
+	elementMap *map[string]uint16 // pointer so that we can directly compare using ==
 }
 
 var _ Value = EnumValue{}
@@ -120,11 +125,7 @@ func (v EnumValue) Convert(val interface{}) (Value, error) {
 		}
 		v.Uint16Value = Uint16Value(pVal)
 	case []uint8:
-		pVal, err := strconv.ParseUint(*(*string)(unsafe.Pointer(&val)), 10, 16)
-		if err != nil {
-			return nil, errors.Wrap(err)
-		}
-		v.Uint16Value = Uint16Value(pVal)
+		v.Uint16Value = Uint16Value((*v.elementMap)[*(*string)(unsafe.Pointer(&val))])
 	default:
 		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
 	}

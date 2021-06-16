@@ -44,7 +44,7 @@ func (m *RepositoryManager) CycleStarted(c *Cycle) error {
 	// These probabilities are used as such: if we generate a random uint64 across the whole range, then we return a hit
 	// if that value is less than or equal to the probability value.
 	m.tableProbability = math.MaxUint64 / (uint64(c.Planner.Base.Amounts.Rows.Median()) * 3)
-	m.branchProbability = math.MaxUint64 / (uint64(c.Planner.Base.Amounts.Rows.Median()) * 3 * c.Blueprint.TableCount)
+	m.branchProbability = math.MaxUint64 / (uint64(c.Planner.Base.Amounts.Rows.Median()) * 2 * c.Blueprint.TableCount)
 	c.QueueAction(m.MainLoop)
 	return nil
 }
@@ -203,7 +203,7 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 }
 
 // ValidateRows validates all rows of each table on each branch according to the stored data.
-func (m *RepositoryManager) ValidateRows(c *Cycle) (retErr error) {
+func (m *RepositoryManager) ValidateRows(c *Cycle) error {
 	err := c.Logger.WriteLine(LogType_INFO,
 		fmt.Sprintf("Validating Data: %s", time.Now().Format("2006-01-02 15:04:05")))
 	if err != nil {
@@ -228,10 +228,7 @@ func (m *RepositoryManager) ValidateRows(c *Cycle) (retErr error) {
 					return errors.Wrap(err)
 				}
 				defer func() {
-					err := doltCursor.Close()
-					if err != nil && retErr == nil {
-						retErr = errors.Wrap(err)
-					}
+					_ = doltCursor.Close()
 				}()
 
 				var iRow Row

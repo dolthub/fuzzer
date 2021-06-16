@@ -62,6 +62,11 @@ func (r Row) Value() []types.Value {
 	return r.Values[r.PkColsLen:]
 }
 
+// IsEmpty returns whether the row contains any values.
+func (r Row) IsEmpty() bool {
+	return len(r.Values) == 0
+}
+
 // MySQLString returns the row as a comma-separated string. Intended for MySQL usage.
 func (r Row) MySQLString() string {
 	vals := make([]string, len(r.Values))
@@ -91,6 +96,60 @@ func (r Row) Equals(otherRow Row) bool {
 		}
 	}
 	return true
+}
+
+// Compare returns an integer indicating the ordering of this row in relation to the given row. Empty rows will always
+// return a greater value than non-empty rows.
+func (r Row) Compare(otherRow Row) int {
+	if len(r.Values) != len(otherRow.Values) {
+		if len(r.Values) == 0 {
+			return 1
+		} else if len(otherRow.Values) == 0 {
+			return -1
+		} else if len(r.Values) < len(otherRow.Values) {
+			return -1
+		}
+		return 1
+	}
+	for i := 0; i < len(r.Values); i++ {
+		valComp := r.Values[i].Compare(otherRow.Values[i])
+		if valComp == -1 {
+			return -1
+		} else if valComp == 1 {
+			return 1
+		}
+	}
+	return 0
+}
+
+// PKCompare returns an integer indicating the ordering of this row in relation to the given row. This evaluates only
+// the primary keys. Empty rows will always return a greater value than non-empty rows.
+func (r Row) PKCompare(otherRow Row) int {
+	if len(r.Values) != len(otherRow.Values) {
+		if len(r.Values) == 0 {
+			return 1
+		} else if len(otherRow.Values) == 0 {
+			return -1
+		} else if len(r.Values) < len(otherRow.Values) {
+			return -1
+		}
+		return 1
+	}
+	if r.PkColsLen != otherRow.PkColsLen {
+		if r.PkColsLen < otherRow.PkColsLen {
+			return -1
+		}
+		return 1
+	}
+	for i := int32(0); i < r.PkColsLen; i++ {
+		valComp := r.Values[i].Compare(otherRow.Values[i])
+		if valComp == -1 {
+			return -1
+		} else if valComp == 1 {
+			return 1
+		}
+	}
+	return 0
 }
 
 // Copy returns a copy of this row.

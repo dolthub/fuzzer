@@ -3,6 +3,8 @@ package types
 import (
 	"fmt"
 	"math"
+	"strings"
+	"unsafe"
 
 	"github.com/dolthub/fuzzer/utils"
 
@@ -32,7 +34,7 @@ func (d *Decimal) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	// Scale has a hard upper limit of 30 imposed by MySQL.
-	scale, err := d.Precision.RandomValueRestrictUpper(utils.MinInt64(precision, 30))
+	scale, err := d.Scale.RandomValueRestrictUpper(utils.MinInt64(precision, 30))
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -58,23 +60,34 @@ func (i *DecimalInstance) Get() (Value, error) {
 		return NilValue{}, errors.Wrap(err)
 	}
 
-	strBytes := make([]byte, i.precision+1)
+	var strBytes []byte
 	strIdx := 0
-	for idx := 0; idx < i.precision-i.scale; strIdx, idx = strIdx+1, idx+1 {
-		strBytes[strIdx] = (beforeDecimal[idx] % 10) + 48
+	if i.precision-i.scale > 0 {
+		strBytes = make([]byte, i.precision+1)
+		for idx := 0; idx < i.precision-i.scale; strIdx, idx = strIdx+1, idx+1 {
+			strBytes[strIdx] = (beforeDecimal[idx] % 10) + 48
+		}
+	} else {
+		strBytes = make([]byte, i.precision+2)
+		strBytes[0] = '0'
+		strIdx = 1
 	}
 
-	strBytes[strIdx] = '.'
-	strIdx++
-	for idx := 0; idx < i.scale; strIdx, idx = strIdx+1, idx+1 {
-		strBytes[strIdx] = (afterDecimal[idx] % 10) + 48
+	if i.scale > 0 {
+		strBytes[strIdx] = '.'
+		strIdx++
+		for idx := 0; idx < i.scale; strIdx, idx = strIdx+1, idx+1 {
+			strBytes[strIdx] = (afterDecimal[idx] % 10) + 48
+		}
+	} else {
+		strBytes = strBytes[:i.precision]
 	}
-	return DecimalValue{StringValue(strBytes)}, err
+	return DecimalValue{StringValue(strBytes), i.valuePrecision(), i.scale}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *DecimalInstance) TypeValue() Value {
-	return DecimalValue{StringValue("")}
+	return DecimalValue{StringValue(""), i.valuePrecision(), i.scale}
 }
 
 // Name implements the TypeInstance interface.
@@ -90,9 +103,21 @@ func (i *DecimalInstance) MaxValueCount() float64 {
 	return 2 * math.Pow10(i.precision)
 }
 
+// valuePrecision returns the precision to be used for DecimalValue. DecimalValue assumes that precision - scale will
+// have a minimum value of one (to represent the zero value on display), so we return a modified precision in the event
+// that precision - scale would equal 0.
+func (i *DecimalInstance) valuePrecision() int {
+	if i.precision-i.scale == 0 {
+		return i.precision + 1
+	}
+	return i.precision
+}
+
 // DecimalValue is the Value type of a DecimalInstance.
 type DecimalValue struct {
 	StringValue
+	precision int
+	scale     int
 }
 
 var _ Value = DecimalValue{}
@@ -101,6 +126,22 @@ var _ Value = DecimalValue{}
 func (v DecimalValue) Convert(val interface{}) (Value, error) {
 	switch val := val.(type) {
 	case string:
+		val = strings.TrimLeft(val, "0")
+		if len(val) == 0 {
+			if v.scale > 0 {
+				strBytes := make([]byte, v.scale+2)
+				for idx := 0; idx < len(strBytes); idx += 1 {
+					strBytes[idx] = '0'
+				}
+				strBytes[1] = '.'
+				val = *(*string)(unsafe.Pointer(&strBytes))
+			} else {
+				val = "0"
+			}
+		}
+		if val[0] == '.' {
+			val = "0" + val
+		}
 		v.StringValue = StringValue(val)
 	case []byte:
 		v.StringValue = StringValue(val)
@@ -122,5 +163,20 @@ func (v DecimalValue) MySQLString() string {
 
 // SQLiteString implements the Value interface.
 func (v DecimalValue) SQLiteString() string {
-	return v.String()
+	decimalIdx := strings.IndexRune(string(v.StringValue), '.')
+	var zerosToAdd int
+	if decimalIdx == -1 {
+		zerosToAdd = v.precision - len(v.StringValue)
+	} else {
+		zerosToAdd = v.precision - v.scale - decimalIdx
+	}
+	if zerosToAdd == 0 {
+		return v.String()
+	}
+	strBytes := make([]byte, len(v.StringValue)+zerosToAdd)
+	copy(strBytes[zerosToAdd:], v.StringValue)
+	for i := 0; i < zerosToAdd; i++ {
+		strBytes[i] = '0'
+	}
+	return StringValue(*(*string)(unsafe.Pointer(&strBytes))).String()
 }

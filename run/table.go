@@ -108,6 +108,15 @@ func (t *Table) CreateString(sqlite bool) string {
 	return sb.String()
 }
 
+// DoltTableHasConflicts returns whether the Dolt table has any conflicts.
+func (t *Table) DoltTableHasConflicts(c *Cycle) (bool, error) {
+	out, err := c.CliQuery("conflicts", "cat", t.Name)
+	if err != nil {
+		return false, errors.Wrap(err)
+	}
+	return len(out) > 0, nil
+}
+
 // GetDoltCursor returns a cursor over Dolt's stored table data.
 func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
 	conn, process, stdErrBuffer, err := c.SqlServer.GetConnection()
@@ -130,6 +139,63 @@ func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
 		conn:     conn,
 		rows:     outRows,
 		template: t.Data.ConstructTemplateRow(),
+		process:  process,
+		errBuf:   stdErrBuffer,
+	}, nil
+}
+
+// GetDoltConflictsCursor returns a cursor over Dolt's conflicts for this table. This returns an error if there are no
+// conflicts to iterate over, therefore it is best to check for conflicts first using DoltTableHasConflicts.
+func (t *Table) GetDoltConflictsCursor(c *Cycle) (*DoltDataCursor, error) {
+	conn, process, stdErrBuffer, err := c.SqlServer.GetConnection()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colsToSelect := ""
+	for _, col := range t.PKCols {
+		colsToSelect += fmt.Sprintf(",`base_%s`", col.Name)
+	}
+	for _, col := range t.NonPKCols {
+		colsToSelect += fmt.Sprintf(",`base_%s`", col.Name)
+	}
+	for _, col := range t.PKCols {
+		colsToSelect += fmt.Sprintf(",`our_%s`", col.Name)
+	}
+	for _, col := range t.NonPKCols {
+		colsToSelect += fmt.Sprintf(",`our_%s`", col.Name)
+	}
+	for _, col := range t.PKCols {
+		colsToSelect += fmt.Sprintf(",`their_%s`", col.Name)
+	}
+	for _, col := range t.NonPKCols {
+		colsToSelect += fmt.Sprintf(",`their_%s`", col.Name)
+	}
+	allColsLen := len(t.PKCols) + len(t.NonPKCols)
+	orderBy := ""
+	for i := 1; i <= allColsLen*3; i++ {
+		if i == 1 {
+			orderBy += " ORDER BY 1"
+		} else {
+			orderBy += fmt.Sprintf(",%d", i)
+		}
+	}
+	outRows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT %s FROM `%s`%s;", colsToSelect[1:], t.Name, orderBy))
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	baselineTemplate := t.Data.ConstructTemplateRow()
+	fullTemplateVals := make([]types.Value, 3*allColsLen)
+	copy(fullTemplateVals[:allColsLen/3], baselineTemplate.Values)
+	copy(fullTemplateVals[allColsLen/3:2*(allColsLen/3)], baselineTemplate.Values)
+	copy(fullTemplateVals[2*(allColsLen/3):], baselineTemplate.Values)
+	templateRow := Row{
+		Values:    fullTemplateVals,
+		PkColsLen: 0,
+	}
+	return &DoltDataCursor{
+		conn:     conn,
+		rows:     outRows,
+		template: templateRow,
 		process:  process,
 		errBuf:   stdErrBuffer,
 	}, nil
@@ -185,9 +251,6 @@ func (ddc *DoltDataCursor) Close() error {
 	rErr := ddc.rows.Close()
 	cErr := ddc.conn.Close()
 	pErr := ddc.process.Kill()
-	if ddc.errBuf.Len() > 0 {
-		return errors.New(ddc.errBuf.String())
-	}
 	if rErr != nil {
 		return errors.Wrap(rErr)
 	}

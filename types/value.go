@@ -15,6 +15,10 @@ import (
 type ValuePrimitive interface {
 	// Compare returns an integer comparing the current value to the given value. Returns -2 if the Values are a mismatch.
 	Compare(other ValuePrimitive) int
+	// Primitive returns the ValuePrimitive. When called on a ValuePrimitive, it returns itself. When called on a Value,
+	// it returns the underlying ValuePrimitive, rather than using the Value as a ValuePrimitive. This is useful for
+	// the comparison functions on each ValuePrimitive to automatically get the inner ValuePrimitive.
+	Primitive() ValuePrimitive
 	// String returns the underlying value as a string for insertion into a generic SQL file, e.g. string would include
 	// the quotes.
 	String() string
@@ -39,7 +43,7 @@ type NilValue struct{}
 
 var _ Value = NilValue{}
 
-// Set implements the interface Value.
+// Convert implements the interface Value.
 func (v NilValue) Convert(val interface{}) (Value, error) {
 	if val != nil {
 		return nil, errors.New(fmt.Sprintf("cannot convert %T to NULL", val))
@@ -50,6 +54,11 @@ func (v NilValue) Convert(val interface{}) (Value, error) {
 // Name implements the interface Value.
 func (v NilValue) Name() string {
 	return "NULL"
+}
+
+// Primitive implements the interface Value.
+func (v NilValue) Primitive() ValuePrimitive {
+	return v
 }
 
 // MySQLString implements the interface Value.
@@ -69,7 +78,7 @@ func (v NilValue) SQLiteString() string {
 
 // Compare implements the interface ValuePrimitive.
 func (v NilValue) Compare(other ValuePrimitive) int {
-	_, ok := other.(NilValue)
+	_, ok := other.Primitive().(NilValue)
 	if ok {
 		return 0
 	}
@@ -91,9 +100,14 @@ func (v Int8Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Int8Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Int8Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Int8Value:
@@ -123,9 +137,14 @@ func (v Int16Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Int16Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Int16Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Int16Value:
@@ -155,9 +174,14 @@ func (v Int32Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Int32Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Int32Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Int32Value:
@@ -187,9 +211,14 @@ func (v Int64Value) String() string {
 	return strconv.FormatInt(int64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Int64Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Int64Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Int64Value:
@@ -219,9 +248,14 @@ func (v Uint8Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Uint8Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Uint8Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Uint8Value:
@@ -251,9 +285,14 @@ func (v Uint16Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Uint16Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Uint16Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Uint16Value:
@@ -283,9 +322,14 @@ func (v Uint32Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Uint32Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Uint32Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Uint32Value:
@@ -315,9 +359,14 @@ func (v Uint64Value) String() string {
 	return strconv.FormatUint(uint64(v), 10)
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Uint64Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Uint64Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Uint64Value:
@@ -363,9 +412,14 @@ func (v Float32Value) String() string {
 	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 32)).String()
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Float32Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Float32Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Float32Value:
@@ -396,9 +450,14 @@ func (v Float64Value) String() string {
 	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 64)).String()
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v Float64Value) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v Float64Value) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case Float64Value:
@@ -432,9 +491,14 @@ func (v StringValue) String() string {
 	return *(*string)(unsafe.Pointer(&out))
 }
 
+// Primitive implements the interface ValuePrimitive.
+func (v StringValue) Primitive() ValuePrimitive {
+	return v
+}
+
 // Compare implements the interface ValuePrimitive.
 func (v StringValue) Compare(other ValuePrimitive) int {
-	switch other := other.(type) {
+	switch other := other.Primitive().(type) {
 	case NilValue:
 		return 1
 	case StringValue:

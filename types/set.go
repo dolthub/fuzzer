@@ -3,7 +3,6 @@ package types
 import (
 	"fmt"
 	"math"
-	"strconv"
 	"strings"
 	"unsafe"
 
@@ -33,29 +32,33 @@ func (s *Set) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	elements := make([]string, numOfElements)
+	elementMap := make(map[string]uint64)
 	addedElements := make(map[string]struct{})
 	for i := int64(0); i < numOfElements; {
 		elemLength, err := s.ElementNameLength.RandomValue()
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
-		elemName, err := rand.String(int(elemLength))
+		elemName, err := rand.StringExtendedAlphanumeric(int(elemLength))
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}
 		lowerElemName := strings.ToLower(elemName)
 		if _, ok := addedElements[lowerElemName]; !ok {
 			elements[i] = elemName
+			elementMap[elemName] = 1 << uint64(i)
 			addedElements[lowerElemName] = struct{}{}
 			i++
 		}
 	}
-	return &SetInstance{elements}, nil
+	elementMap[""] = 0
+	return &SetInstance{elements, elementMap}, nil
 }
 
 // SetInstance is the TypeInstance of Set.
 type SetInstance struct {
-	elements []string
+	elements   []string
+	elementMap map[string]uint64
 }
 
 var _ TypeInstance = (*SetInstance)(nil)
@@ -64,14 +67,14 @@ var _ TypeInstance = (*SetInstance)(nil)
 func (i *SetInstance) Get() (Value, error) {
 	v, err := rand.Uint64()
 	if len(i.elements) >= 64 {
-		return SetValue{Uint64Value(v)}, nil
+		return SetValue{Uint64Value(v), &i.elementMap}, nil
 	}
-	return SetValue{Uint64Value(v % (1 << len(i.elements)))}, err
+	return SetValue{Uint64Value(v % (1 << len(i.elements))), &i.elementMap}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *SetInstance) TypeValue() Value {
-	return SetValue{Uint64Value(0)}
+	return SetValue{Uint64Value(0), &i.elementMap}
 }
 
 // Name implements the TypeInstance interface.
@@ -90,6 +93,7 @@ func (i *SetInstance) MaxValueCount() float64 {
 // SetValue is the Value type of a SetInstance.
 type SetValue struct {
 	Uint64Value
+	elementMap *map[string]uint64 // pointer so that we can directly compare using ==
 }
 
 var _ Value = SetValue{}
@@ -125,11 +129,12 @@ func (v SetValue) Convert(val interface{}) (Value, error) {
 		}
 		v.Uint64Value = Uint64Value(n)
 	case []uint8:
-		pVal, err := strconv.ParseUint(*(*string)(unsafe.Pointer(&val)), 10, 64)
-		if err != nil {
-			return nil, errors.Wrap(err)
+		vals := strings.Split(*(*string)(unsafe.Pointer(&val)), ",")
+		sum := uint64(0)
+		for _, val := range vals {
+			sum += (*v.elementMap)[val]
 		}
-		v.Uint64Value = Uint64Value(pVal)
+		v.Uint64Value = Uint64Value(sum)
 	default:
 		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
 	}

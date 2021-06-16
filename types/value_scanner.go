@@ -19,6 +19,10 @@ func NewValueScanner(destination *Value) ValueScanner {
 // Scan implements the interface sql.Scanner.
 func (vs ValueScanner) Scan(val interface{}) error {
 	var err error
-	*vs.Destination, err = (*vs.Destination).Convert(val)
+	if val == nil {
+		*vs.Destination = NilValue{}
+	} else {
+		*vs.Destination, err = (*vs.Destination).Convert(val)
+	}
 	return err
 }

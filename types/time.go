@@ -2,6 +2,7 @@ package types
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
@@ -38,10 +39,12 @@ func (i *TimeInstance) Get() (Value, error) {
 	}
 	v = v % 3020399
 	vAbs := v
+	neg := ""
 	if vAbs < 0 {
 		vAbs *= -1
+		neg = "-"
 	}
-	return TimeValue{StringValue(fmt.Sprintf("%d:%02d:%02d", v/3600, (vAbs/60)%60, vAbs%60))}, nil
+	return TimeValue{StringValue(fmt.Sprintf("%s%02d:%02d:%02d", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))}, nil
 }
 
 // TypeValue implements the TypeInstance interface.
@@ -52,7 +55,7 @@ func (i *TimeInstance) TypeValue() Value {
 // Name implements the TypeInstance interface.
 func (i *TimeInstance) Name(sqlite bool) string {
 	if sqlite {
-		return fmt.Sprintf("VARCHAR(20)")
+		return "BIGINT"
 	}
 	return "TIME"
 }
@@ -72,8 +75,14 @@ var _ Value = TimeValue{}
 // Convert implements the Value interface.
 func (v TimeValue) Convert(val interface{}) (Value, error) {
 	switch val := val.(type) {
-	case string:
-		v.StringValue = StringValue(val)
+	case int64:
+		vAbs := val
+		neg := ""
+		if vAbs < 0 {
+			vAbs *= -1
+			neg = "-"
+		}
+		v.StringValue = StringValue(fmt.Sprintf("%s%02d:%02d:%02d", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))
 	case []byte:
 		v.StringValue = StringValue(val)
 	default:
@@ -94,5 +103,23 @@ func (v TimeValue) MySQLString() string {
 
 // SQLiteString implements the Value interface.
 func (v TimeValue) SQLiteString() string {
-	return v.String()
+	divisions := strings.Split(string(v.StringValue), ":")
+	negativeMult := int64(1)
+	if divisions[0][0] == '-' {
+		divisions[0] = divisions[0][1:]
+		negativeMult = -1
+	}
+	hour := int64(0)
+	for i := 0; i < len(divisions[0]); i++ {
+		hour = (hour * 10) + int64(divisions[0][i]-'0')
+	}
+	minute := int64(0)
+	for i := 0; i < len(divisions[1]); i++ {
+		minute = (minute * 10) + int64(divisions[1][i]-'0')
+	}
+	second := int64(0)
+	for i := 0; i < len(divisions[2]); i++ {
+		second = (second * 10) + int64(divisions[2][i]-'0')
+	}
+	return Int64Value(negativeMult * ((hour * 3600) + (minute * 60) + second)).String()
 }

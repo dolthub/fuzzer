@@ -36,6 +36,9 @@ func (m *GCManager) Counter(c *Cycle, table *Table) error {
 
 // Finish runs GC once all of the data has been written to the repository.
 func (m *GCManager) Finish(c *Cycle) error {
+	if m.statementsSinceLastGC == 0 {
+		return nil
+	}
 	if _, err := c.CliQuery("gc"); err != nil {
 		return errors.Wrap(err)
 	}

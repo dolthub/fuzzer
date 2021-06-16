@@ -121,19 +121,19 @@ func (s *UpdateStatement) GenerateStatement(table *Table) (string, error) {
 	}
 	row = modifiedRow
 
-	sets, err := valsToColumnEquals(table.NonPKCols[:cut], row.Value()[:cut])
+	sets, err := GenerateColumnEquals(table.NonPKCols[:cut], row.Value()[:cut])
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	setsSQLite, err := valsToColumnEqualsSQLite(table.NonPKCols[:cut], row.Value()[:cut])
+	setsSQLite, err := GenerateColumnEqualsSQLite(table.NonPKCols[:cut], row.Value()[:cut])
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	wheres, err := valsToColumnEquals(table.PKCols, row.Key())
+	wheres, err := GenerateColumnEquals(table.PKCols, row.Key())
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	wheresSQLite, err := valsToColumnEqualsSQLite(table.PKCols, row.Key())
+	wheresSQLite, err := GenerateColumnEqualsSQLite(table.PKCols, row.Key())
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -171,11 +171,11 @@ func (s *DeleteStatement) GenerateStatement(table *Table) (string, error) {
 		return (&ReplaceStatement{}).GenerateStatement(table)
 	}
 
-	wheres, err := valsToColumnEquals(table.PKCols, row.Key())
+	wheres, err := GenerateColumnEquals(table.PKCols, row.Key())
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
-	wheresSQLite, err := valsToColumnEqualsSQLite(table.PKCols, row.Key())
+	wheresSQLite, err := GenerateColumnEqualsSQLite(table.PKCols, row.Key())
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -186,9 +186,9 @@ func (s *DeleteStatement) GenerateStatement(table *Table) (string, error) {
 	return fmt.Sprintf("DELETE FROM `%s` WHERE %s;", table.Name, strings.Join(wheres, " AND ")), nil
 }
 
-// valsToColumnEquals returns a slice of strings of the form "`column_name` = value" from the given parameters.
+// GenerateColumnEquals returns a slice of strings of the form "`column_name` = value" from the given parameters.
 // Expects both slices to be of equal length. Intended for usage with MySQL.
-func valsToColumnEquals(colNames []*Column, vals []types.Value) ([]string, error) {
+func GenerateColumnEquals(colNames []*Column, vals []types.Value) ([]string, error) {
 	if len(colNames) != len(vals) {
 		return nil, errors.New(fmt.Sprintf("length mismatch: columns %d, vals %d", len(colNames), len(vals)))
 	}
@@ -199,9 +199,9 @@ func valsToColumnEquals(colNames []*Column, vals []types.Value) ([]string, error
 	return s, nil
 }
 
-// valsToColumnEqualsSQLite returns a slice of strings of the form "`column_name` = value" from the given parameters.
+// GenerateColumnEqualsSQLite returns a slice of strings of the form "`column_name` = value" from the given parameters.
 // Expects both slices to be of equal length. Intended for usage with SQLite.
-func valsToColumnEqualsSQLite(colNames []*Column, vals []types.Value) ([]string, error) {
+func GenerateColumnEqualsSQLite(colNames []*Column, vals []types.Value) ([]string, error) {
 	if len(colNames) != len(vals) {
 		return nil, errors.New(fmt.Sprintf("length mismatch: columns %d, vals %d", len(colNames), len(vals)))
 	}

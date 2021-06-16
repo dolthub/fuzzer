@@ -240,6 +240,16 @@ func (c *Cycle) SwitchCurrentBranch(targetBranch string) error {
 	return errors.New(fmt.Sprintf("could not find a branch with the name '%s' to switch to", targetBranch))
 }
 
+// GetBranch returns the Branch with the given name. If the branch does not exist, returns nil.
+func (c *Cycle) GetBranch(branchName string) *Branch {
+	for _, branch := range c.branches {
+		if branch.Name == branchName {
+			return branch
+		}
+	}
+	return nil
+}
+
 // QueueAction queues the given action.
 func (c *Cycle) QueueAction(f func(*Cycle) error) {
 	c.actionQueue <- f
