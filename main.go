@@ -33,9 +33,13 @@ func main() {
 	//TODO: specify cycle count as argument
 	for i := 0; i < 1; i++ {
 		cycle, err := planner.NewCycle()
-		exitOnErr(err)
+		if err != nil {
+			fmt.Printf("%+v", err)
+		}
 		err = cycle.Run()
-		exitOnErr(err)
+		if err != nil {
+			fmt.Printf("%+v", err)
+		}
 	}
 }
 

@@ -11,6 +11,7 @@ var _ HookRegistrant = (*BlueprintManager)(nil)
 func (m *BlueprintManager) Register(hooks *Hooks) {
 	hooks.CycleInitialized(m.InitializeBlueprint)
 	hooks.SQLStatementBatchStarted(m.SetBatchSize)
+	hooks.SQLStatementBatchFinished(m.UpdateStatementsExecuted)
 	hooks.BranchCreated(m.NewBranch)
 	hooks.TableCreated(m.NewTable)
 }
@@ -38,6 +39,12 @@ func (m *BlueprintManager) SetBatchSize(c *Cycle, table *Table) error {
 		return errors.Wrap(err)
 	}
 	c.Blueprint.SQLStatementBatchSize = uint64(consecutiveStatements)
+	return nil
+}
+
+// UpdateStatementsExecuted sets the SQLStatementsExecuted when a batch has ended.
+func (m *BlueprintManager) UpdateStatementsExecuted(c *Cycle, table *Table) error {
+	c.Blueprint.SQLStatementsExecuted += c.Blueprint.SQLStatementBatchSize
 	return nil
 }
 

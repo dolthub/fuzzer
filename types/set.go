@@ -67,9 +67,9 @@ var _ TypeInstance = (*SetInstance)(nil)
 func (i *SetInstance) Get() (Value, error) {
 	v, err := rand.Uint64()
 	if len(i.elements) >= 64 {
-		return SetValue{Uint64Value(v), &i.elementMap}, nil
+		return SetValue{Uint64Value(v), &i.elementMap}, err
 	}
-	return SetValue{Uint64Value(v % (1 << len(i.elements))), &i.elementMap}, err
+	return SetValue{Uint64Value(v % (1 << uint64(len(i.elements)))), &i.elementMap}, err
 }
 
 // TypeValue implements the TypeInstance interface.

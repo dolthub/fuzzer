@@ -184,12 +184,6 @@ func (c *Cycle) Run() (err error) {
 			}
 		}
 	}
-
-	for i := 0; i < len(c.Planner.Hooks.repositoryFinished); i++ {
-		if err = c.Planner.Hooks.repositoryFinished[i](c); err != nil {
-			return errors.Wrap(err)
-		}
-	}
 	return nil
 }
 

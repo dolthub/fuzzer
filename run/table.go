@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/gocraft/dbr/v2"
 
@@ -31,6 +32,7 @@ type DoltDataCursor struct {
 	template Row
 	process  *os.Process
 	errBuf   *bytes.Buffer
+	once     *sync.Once
 }
 
 // NewTable returns a *Table.
@@ -141,6 +143,7 @@ func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
 		template: t.Data.ConstructTemplateRow(),
 		process:  process,
 		errBuf:   stdErrBuffer,
+		once:     &sync.Once{},
 	}, nil
 }
 
@@ -179,15 +182,15 @@ func (t *Table) GetDoltConflictsCursor(c *Cycle) (*DoltDataCursor, error) {
 			orderBy += fmt.Sprintf(",%d", i)
 		}
 	}
-	outRows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT %s FROM `%s`%s;", colsToSelect[1:], t.Name, orderBy))
+	outRows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT %s FROM `dolt_conflicts_%s`%s;", colsToSelect[1:], t.Name, orderBy))
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 	baselineTemplate := t.Data.ConstructTemplateRow()
 	fullTemplateVals := make([]types.Value, 3*allColsLen)
-	copy(fullTemplateVals[:allColsLen/3], baselineTemplate.Values)
-	copy(fullTemplateVals[allColsLen/3:2*(allColsLen/3)], baselineTemplate.Values)
-	copy(fullTemplateVals[2*(allColsLen/3):], baselineTemplate.Values)
+	copy(fullTemplateVals[:allColsLen], baselineTemplate.Values)
+	copy(fullTemplateVals[allColsLen:2*allColsLen], baselineTemplate.Values)
+	copy(fullTemplateVals[2*allColsLen:], baselineTemplate.Values)
 	templateRow := Row{
 		Values:    fullTemplateVals,
 		PkColsLen: 0,
@@ -198,6 +201,7 @@ func (t *Table) GetDoltConflictsCursor(c *Cycle) (*DoltDataCursor, error) {
 		template: templateRow,
 		process:  process,
 		errBuf:   stdErrBuffer,
+		once:     &sync.Once{},
 	}, nil
 }
 
@@ -248,19 +252,25 @@ func (ddc *DoltDataCursor) NextRow() (Row, bool, error) {
 
 // Close closes the underlying cursor and frees resources.
 func (ddc *DoltDataCursor) Close() error {
-	rErr := ddc.rows.Close()
-	cErr := ddc.conn.Close()
-	pErr := ddc.process.Kill()
-	if rErr != nil {
-		return errors.Wrap(rErr)
-	}
-	if cErr != nil {
-		return errors.Wrap(cErr)
-	}
-	if pErr != nil {
-		return errors.Wrap(cErr)
-	}
-	return nil
+	var err error
+	ddc.once.Do(func() {
+		rErr := ddc.rows.Close()
+		cErr := ddc.conn.Close()
+		pErr := ddc.process.Kill()
+		if rErr != nil {
+			err = errors.Wrap(rErr)
+			return
+		}
+		if cErr != nil {
+			err = errors.Wrap(cErr)
+			return
+		}
+		if pErr != nil {
+			err = errors.Wrap(pErr)
+			return
+		}
+	})
+	return err
 }
 
 // Column represents a table column in dolt.

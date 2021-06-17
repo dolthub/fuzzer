@@ -82,12 +82,19 @@ func (m *Merge) BeginMerge(c *run.Cycle) error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	//TODO: cycle through all combinations of branches and add them to the map (including the reverse pair)
 	branches := c.GetBranchNames()
-	m.mergeCombinations[mergeCombination{
-		ours:   branches[0],
-		theirs: branches[1],
-	}] = false
+	for i := 0; i < len(branches); i++ {
+		for j := i + 1; j < len(branches); j++ {
+			m.mergeCombinations[mergeCombination{
+				ours:   branches[i],
+				theirs: branches[j],
+			}] = false
+			m.mergeCombinations[mergeCombination{
+				ours:   branches[j],
+				theirs: branches[i],
+			}] = false
+		}
+	}
 	c.QueueAction(m.Run)
 	return nil
 }
@@ -99,6 +106,7 @@ func (m *Merge) Run(c *run.Cycle) error {
 		if visited == false {
 			combination = mc
 			m.mergeCombinations[mc] = true
+			break
 		}
 	}
 	if combination.ours == "" || combination.theirs == "" { // We've tested all merge combinations
@@ -147,6 +155,15 @@ func (m *Merge) Run(c *run.Cycle) error {
 			return errors.Wrap(err)
 		}
 	}
+	_, err = c.CliQuery("merge", "--abort")
+	if err != nil && !strings.Contains(err.Error(), "no merge to abort") {
+		return errors.Wrap(err)
+	}
+	_, err = c.CliQuery("reset", "--hard")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	c.QueueAction(m.Run)
 	return nil
 }
 
@@ -319,7 +336,7 @@ func (mt mergeTables) ProcessMerge() (mergeTableWithConflicts, error) {
 		case -1:
 			switch theirRow.PKCompare(baseRow) {
 			case -1: // both are new, check if same
-				switch ourRow.Compare(theirRow) {
+				switch ourRow.PKCompare(theirRow) {
 				case -1: // ours is new
 					ourRow, ourRowExists, err = ourCursor.NextRow()
 					if err != nil {
@@ -572,6 +589,7 @@ func (mtc mergeTableWithConflicts) Verify(c *run.Cycle) error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
+	_ = doltCursor.Close()
 
 	if ok, err = mtc.table.DoltTableHasConflicts(c); err != nil {
 		return errors.Wrap(err)
