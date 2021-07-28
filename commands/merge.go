@@ -1,3 +1,17 @@
+// Copyright 2021 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package commands
 
 import (
@@ -5,6 +19,9 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/dolthub/dolt/go/cmd/dolt/cli"
+	"github.com/dolthub/dolt/go/libraries/utils/argparser"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/run"
@@ -51,7 +68,34 @@ type mergeTableWithConflicts struct {
 	conflicts []run.Row
 }
 
-var _ run.HookRegistrant = (*Merge)(nil)
+var _ Command = (*Merge)(nil)
+
+// init adds the command to the map.
+func init() {
+	addCommand(&Merge{})
+}
+
+// Name implements the interface Command.
+func (m *Merge) Name() string {
+	return "merge"
+}
+
+// Description implements the interface Command.
+func (m *Merge) Description() string {
+	return "Tests dolt's merge functionality."
+}
+
+// ParseArgs implements the interface Command.
+func (m *Merge) ParseArgs(commandStr string, ap *argparser.ArgParser, args []string) error {
+	help, _ := cli.HelpAndUsagePrinters(cli.GetCommandDocumentation(commandStr, cli.CommandDocumentationContent{
+		ShortDesc: "Tests dolt's merge functionality",
+		LongDesc: `This command verifies that "dolt merge" functions as expected under randomly constructed scenarios.
+This also performs a validation step before testing merge, which is the same as the "basic" command.`,
+		Synopsis: nil,
+	}, ap))
+	_ = cli.ParseArgsOrDie(ap, args, help)
+	return nil
+}
 
 // Register implements the HookRegistrant interface.
 func (m *Merge) Register(hooks *run.Hooks) {

@@ -1,3 +1,17 @@
+// Copyright 2021 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package types
 
 import (
@@ -349,6 +363,21 @@ func (v Uint32Value) Value() (driver.Value, error) {
 	return uint64(v), nil
 }
 
+// formatUint32Sqlite formats a uint32 for SQLite. SQLite natively supports uint32, however this returns fixed-length
+// strings.
+func formatUint32Sqlite(v uint32) string {
+	uintStr := strconv.FormatUint(uint64(v), 10)
+	neededZeros := 10 - len(uintStr)
+	out := make([]byte, 12)
+	copy(out[1+neededZeros:], uintStr)
+	out[0] = 39
+	for i := 1; i <= neededZeros; i++ {
+		out[i] = 48
+	}
+	out[len(out)-1] = 39
+	return *(*string)(unsafe.Pointer(&out))
+}
+
 // Uint64Value is the ValuePrimitive type of a uint64.
 type Uint64Value uint64
 
@@ -408,8 +437,7 @@ var _ ValuePrimitive = Float32Value(0)
 
 // String implements the interface ValuePrimitive.
 func (v Float32Value) String() string {
-	//TODO: is the string wrap necessary?
-	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 32)).String()
+	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 64)).String()
 }
 
 // Primitive implements the interface ValuePrimitive.
@@ -446,7 +474,6 @@ var _ ValuePrimitive = Float64Value(0)
 
 // String implements the interface ValuePrimitive.
 func (v Float64Value) String() string {
-	//TODO: is the string wrap necessary?
 	return StringValue(strconv.FormatFloat(float64(v), 'g', -1, 64)).String()
 }
 

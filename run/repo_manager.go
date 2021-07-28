@@ -1,3 +1,17 @@
+// Copyright 2021 Dolthub, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package run
 
 import (
@@ -43,8 +57,8 @@ func (m *RepositoryManager) CycleStarted(c *Cycle) error {
 	}
 	// These probabilities are used as such: if we generate a random uint64 across the whole range, then we return a hit
 	// if that value is less than or equal to the probability value.
-	m.tableProbability = math.MaxUint64 / (uint64(c.Planner.Base.Amounts.Rows.Median()) * 3)
-	m.branchProbability = math.MaxUint64 / (uint64(c.Planner.Base.Amounts.Rows.Median()) * 2 * c.Blueprint.TableCount)
+	m.tableProbability = math.MaxUint64 / (uint64(c.Planner.Base.Amounts.Rows.Median()) * 2)
+	m.branchProbability = math.MaxUint64 / uint64(float64(c.Planner.Base.Amounts.Rows.Median())*1.5*float64(c.Blueprint.TableCount))
 	c.QueueAction(m.MainLoop)
 	return nil
 }

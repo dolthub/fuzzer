@@ -37,6 +37,7 @@ Manual_GC = true
 Include_README_Config = false
 Enforce_Rows_Lower_Bound_on_Master_Only = false # If enabled, then Amounts->Rows lower bound only applies to the master branch
 Logging = true
+Delete_Successful_Runs = true
 Port = 3307
 
 [Types.Parameters] # All are ranges except for collations
@@ -65,7 +66,7 @@ DATE = [1]
 DATETIME = [1]
 DECIMAL = [1]
 DOUBLE = [1]
-ENUM = [0] # Dolt current lacks the ability to internally convert a uint to ENUM so this is disabled until it's added
+ENUM = [0] # Dolt currently lacks the ability to internally convert a uint to ENUM so this is disabled until it's added
 FLOAT = [1]
 INT = [1]
 INT_UNSIGNED = [1]
@@ -75,7 +76,7 @@ MEDIUMBLOB = [0]
 MEDIUMINT = [1]
 MEDIUMINT_UNSIGNED = [1]
 MEDIUMTEXT = [0]
-SET = [0] # Dolt current lacks the ability to internally convert a uint to SET so this is disabled until it's added
+SET = [0] # Dolt currently lacks the ability to internally convert a uint to SET so this is disabled until it's added
 SMALLINT = [1]
 SMALLINT_UNSIGNED = [1]
 TEXT = [0]

@@ -12,12 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package types
+package commands
 
-import "github.com/dolthub/fuzzer/ranges"
+import (
+	"strings"
 
-type Type interface {
-	ranges.Distributable
-	// Instance returns an instance of this type, which can generate random values.
-	Instance() (TypeInstance, error)
+	"github.com/dolthub/dolt/go/libraries/utils/argparser"
+
+	"github.com/dolthub/fuzzer/run"
+)
+
+// Command is the interface for fuzzer commands.
+type Command interface {
+	run.HookRegistrant
+	Name() string
+	Description() string
+	ParseArgs(commandStr string, ap *argparser.ArgParser, args []string) error
+}
+
+var Commands = make(map[string]Command)
+
+// addCommand adds the given command to the command map, allowing its usage from the command line.
+func addCommand(cmd Command) {
+	Commands[strings.ToLower(cmd.Name())] = cmd
 }
