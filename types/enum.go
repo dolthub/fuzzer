@@ -20,6 +20,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
@@ -27,6 +29,7 @@ import (
 
 // Enum represents the ENUM MySQL type.
 type Enum struct {
+	Collations        []string
 	Distribution      ranges.Int
 	ElementNameLength ranges.Int
 	NumberOfElements  ranges.Int
@@ -41,6 +44,15 @@ func (e *Enum) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (e *Enum) Instance() (TypeInstance, error) {
+	colPos, err := rand.Uint64()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos %= uint64(len(e.Collations))
+	collation, err := sql.ParseCollation(nil, &e.Collations[colPos], false)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
 	numOfElements, err := e.NumberOfElements.RandomValue()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -66,13 +78,14 @@ func (e *Enum) Instance() (TypeInstance, error) {
 		}
 	}
 	elementMap[""] = 0
-	return &EnumInstance{elements, elementMap}, nil
+	return &EnumInstance{elements, elementMap, collation}, nil
 }
 
 // EnumInstance is the TypeInstance of Enum.
 type EnumInstance struct {
 	elements   []string
 	elementMap map[string]uint16
+	collation  sql.Collation
 }
 
 var _ TypeInstance = (*EnumInstance)(nil)

@@ -15,7 +15,7 @@ Primary_Keys = [1, 5]
 Columns = [2, 10]
 Indexes = [0, 10]
 Foreign_Key_Constraints = [0, 7]
-Rows = [25, 100]
+Rows = [50, 200]
 Index_Delay = [0]
 
 [Statement_Distribution]
@@ -28,7 +28,7 @@ DELETE = [1]
 CLI_Query = [0]
 CLI_Batch = [0]
 SQL_Server = [1]
-Consecutive_Range = [10, 25]
+Consecutive_Range = [50, 100]
 
 [Options]
 Dolt_Version = "" # May use the version or hash. The empty string represents the currently-installed Dolt.
@@ -40,46 +40,60 @@ Logging = true
 Delete_Successful_Runs = true
 Port = 3307
 
-[Types.Parameters] # All are ranges except for collations
+[Types.Parameters]
 BINARY_Length = [1, 255]
 BIT_Width = [1, 64]
+BLOB_Length = [1, 1000] #MAX=65535
 CHAR_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
-CHAR_Length = [1, 255]
+CHAR_Length = [1, 255] #MAX=255, auto adjusts depending on collation
 DECIMAL_Precision = [1, 65] # The total number of digits
 DECIMAL_Scale = [0, 30] # The number of digits after the decimal
+ENUM_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
 ENUM_ElementNameLength = [2, 16]
 ENUM_NumberOfElements = [1, 100]
+LONGBLOB_Length = [1, 1000] #MAX=4294967295
+LONGTEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+LONGTEXT_Length = [1, 1000] #MAX=4294967295
+MEDIUMBLOB_Length = [1, 1000] #MAX=16777215
+MEDIUMTEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+MEDIUMTEXT_Length = [1, 1000] #MAX=16777215, auto adjusts depending on collation
+SET_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
 SET_ElementNameLength = [2, 16]
 SET_NumberOfElements = [1, 64]
+TEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+TEXT_Length = [1, 1000] #MAX=65535, auto adjusts depending on collation
+TINYBLOB_Length = [1, 255] #MAX=255
+TINYTEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+TINYTEXT_Length = [1, 255] #MAX=255, auto adjusts depending on collation
 VARBINARY_Length = [1, 1000] #MAX=65535
 VARCHAR_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
-VARCHAR_Length = [1, 1000] #MAX=16383
+VARCHAR_Length = [1, 1000] #MAX=65535, auto adjusts depending on collation
 
 [Types.Distribution]
 BIGINT = [1]
 BIGINT_UNSIGNED = [1]
 BINARY = [1]
 BIT = [1]
-BLOB = [0]
+BLOB = [1]
 CHAR = [1]
 DATE = [1]
 DATETIME = [1]
 DECIMAL = [1]
 DOUBLE = [1]
-ENUM = [0] # Dolt currently lacks the ability to internally convert a uint to ENUM so this is disabled until it's added
+ENUM = [1]
 FLOAT = [1]
 INT = [1]
 INT_UNSIGNED = [1]
-LONGBLOB = [0]
-LONGTEXT = [0]
-MEDIUMBLOB = [0]
+LONGBLOB = [1]
+LONGTEXT = [1]
+MEDIUMBLOB = [1]
 MEDIUMINT = [1]
 MEDIUMINT_UNSIGNED = [1]
-MEDIUMTEXT = [0]
-SET = [0] # Dolt currently lacks the ability to internally convert a uint to SET so this is disabled until it's added
+MEDIUMTEXT = [1]
+SET = [1]
 SMALLINT = [1]
 SMALLINT_UNSIGNED = [1]
-TEXT = [0]
+TEXT = [1]
 TIME = [1]
 TIMESTAMP = [1]
 TINYBLOB = [1]

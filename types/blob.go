@@ -26,6 +26,7 @@ import (
 // Blob represents the BLOB MySQL type.
 type Blob struct {
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Blob)(nil)
@@ -37,7 +38,11 @@ func (b *Blob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (b *Blob) Instance() (TypeInstance, error) {
-	return &BlobInstance{ranges.NewInt([]int64{0, 65535})}, nil
+	charLength, err := b.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return &BlobInstance{ranges.NewInt([]int64{0, charLength})}, nil
 }
 
 // BlobInstance is the TypeInstance of Blob.
@@ -75,7 +80,7 @@ func (i *BlobInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *BlobInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 65536)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // BlobValue is the Value type of a BlobInstance.

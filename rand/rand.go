@@ -115,7 +115,7 @@ func Bytes(length int) ([]byte, error) {
 }
 
 // String returns a random string. All characters will be ASCII between the inclusive decimal range of 32-126, with
-// characters that are invalid in many context excluded, such as quotation characters..
+// characters that are invalid in many contexts excluded, such as quotation characters.
 func String(length int) (string, error) {
 	v, err := Bytes(length)
 	if err != nil {

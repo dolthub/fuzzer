@@ -26,6 +26,7 @@ import (
 // Mediumblob represents the MEDIUMBLOB MySQL type.
 type Mediumblob struct {
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Mediumblob)(nil)
@@ -37,7 +38,11 @@ func (m *Mediumblob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (m *Mediumblob) Instance() (TypeInstance, error) {
-	return &MediumblobInstance{ranges.NewInt([]int64{0, 16777215})}, nil
+	charLength, err := m.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return &MediumblobInstance{ranges.NewInt([]int64{0, charLength})}, nil
 }
 
 // MediumblobInstance is the TypeInstance of Mediumblob.
@@ -75,7 +80,7 @@ func (i *MediumblobInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *MediumblobInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 16777216)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // MediumblobValue is the Value type of a MediumblobInstance.

@@ -37,14 +37,28 @@ type configTypes struct {
 type configTypeParameters struct {
 	BinaryLength          []int64  `json:"BINARY_Length"`
 	BitWidth              []int64  `json:"BIT_Width"`
+	BlobLength            []int64  `json:"BLOB_Length"`
 	CharCollations        []string `json:"CHAR_Collations"`
 	CharLength            []int64  `json:"CHAR_Length"`
 	DecimalPrecision      []int64  `json:"DECIMAL_Precision"`
 	DecimalScale          []int64  `json:"DECIMAL_Scale"`
+	EnumCollations        []string `json:"ENUM_Collations"`
 	EnumElementNameLength []int64  `json:"ENUM_ElementNameLength"`
 	EnumNumberOfElements  []int64  `json:"ENUM_NumberOfElements"`
+	LongblobLength        []int64  `json:"LONGBLOB_Length"`
+	LongtextCollations    []string `json:"LONGTEXT_Collations"`
+	LongtextLength        []int64  `json:"LONGTEXT_Length"`
+	MediumblobLength      []int64  `json:"MEDIUMBLOB_Length"`
+	MediumtextCollations  []string `json:"MEDIUMTEXT_Collations"`
+	MediumtextLength      []int64  `json:"MEDIUMTEXT_Length"`
+	SetCollations         []string `json:"SET_Collations"`
 	SetElementNameLength  []int64  `json:"SET_ElementNameLength"`
 	SetNumberOfElements   []int64  `json:"SET_NumberOfElements"`
+	TextCollations        []string `json:"TEXT_Collations"`
+	TextLength            []int64  `json:"TEXT_Length"`
+	TinyblobLength        []int64  `json:"TINYBLOB_Length"`
+	TinytextCollations    []string `json:"TINYTEXT_Collations"`
+	TinytextLength        []int64  `json:"TINYTEXT_Length"`
 	VarbinaryLength       []int64  `json:"VARBINARY_Length"`
 	VarcharCollations     []string `json:"VARCHAR_Collations"`
 	VarcharLength         []int64  `json:"VARCHAR_Length"`
@@ -66,6 +80,13 @@ func (c *configTypeParameters) Normalize() error {
 	}
 	if c.BitWidth[0] < 0 || c.BitWidth[1] > 64 {
 		return errors.New(fmt.Sprintf(errParameterInvalidRange, "BIT_Width", 0, 64))
+	}
+	c.BlobLength, err = normalizeIntRange(c.BlobLength, "Types.Parameters.BLOB_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.BlobLength[0] < 0 || c.BlobLength[1] > 65535 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "BLOB_Length", 0, 65535))
 	}
 	c.CharCollations, err = checkCollations(c.CharCollations, "Types.Parameters.CHAR_Collations")
 	if err != nil {
@@ -92,6 +113,10 @@ func (c *configTypeParameters) Normalize() error {
 	if c.DecimalScale[0] < 0 || c.DecimalScale[1] > 30 {
 		return errors.New(fmt.Sprintf(errParameterInvalidRange, "DECIMAL_Scale", 0, 30))
 	}
+	c.EnumCollations, err = checkCollations(c.EnumCollations, "Types.Parameters.ENUM_Collations")
+	if err != nil {
+		return errors.Wrap(err)
+	}
 	c.EnumElementNameLength, err = normalizeIntRange(c.EnumElementNameLength, "Types.Parameters.ENUM_ElementNameLength")
 	if err != nil {
 		return errors.Wrap(err)
@@ -106,6 +131,46 @@ func (c *configTypeParameters) Normalize() error {
 	if c.EnumNumberOfElements[0] < 0 || c.EnumNumberOfElements[1] > 65535 {
 		return errors.New(fmt.Sprintf(errParameterInvalidRange, "ENUM_NumberOfElements", 0, 65535))
 	}
+	c.LongblobLength, err = normalizeIntRange(c.LongblobLength, "Types.Parameters.LONGBLOB_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.LongblobLength[0] < 0 || c.LongblobLength[1] > 4294967295 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "LONGBLOB_Length", 0, 4294967295))
+	}
+	c.LongtextCollations, err = checkCollations(c.LongtextCollations, "Types.Parameters.LONGTEXT_Collations")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	c.LongtextLength, err = normalizeIntRange(c.LongtextLength, "Types.Parameters.LONGTEXT_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.LongtextLength[0] < 0 || c.LongtextLength[1] > 4294967295 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "LONGTEXT_Length", 0, 4294967295))
+	}
+	c.MediumblobLength, err = normalizeIntRange(c.MediumblobLength, "Types.Parameters.MEDIUMBLOB_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.MediumblobLength[0] < 0 || c.MediumblobLength[1] > 16777215 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "MEDIUMBLOB_Length", 0, 16777215))
+	}
+	c.MediumtextCollations, err = checkCollations(c.MediumtextCollations, "Types.Parameters.MEDIUMTEXT_Collations")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	c.MediumtextLength, err = normalizeIntRange(c.MediumtextLength, "Types.Parameters.MEDIUMTEXT_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.MediumtextLength[0] < 0 || c.MediumtextLength[1] > 16777215 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "MEDIUMTEXT_Length", 0, 16777215))
+	}
+	c.SetCollations, err = checkCollations(c.SetCollations, "Types.Parameters.SET_Collations")
+	if err != nil {
+		return errors.Wrap(err)
+	}
 	c.SetElementNameLength, err = normalizeIntRange(c.SetElementNameLength, "Types.Parameters.SET_ElementNameLength")
 	if err != nil {
 		return errors.Wrap(err)
@@ -119,6 +184,35 @@ func (c *configTypeParameters) Normalize() error {
 	}
 	if c.SetNumberOfElements[0] < 0 || c.SetNumberOfElements[1] > 64 {
 		return errors.New(fmt.Sprintf(errParameterInvalidRange, "SET_NumberOfElements", 0, 64))
+	}
+	c.TextCollations, err = checkCollations(c.TextCollations, "Types.Parameters.TEXT_Collations")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	c.TextLength, err = normalizeIntRange(c.TextLength, "Types.Parameters.TEXT_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.TextLength[0] < 0 || c.TextLength[1] > 65535 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "TEXT_Length", 0, 65535))
+	}
+	c.TinyblobLength, err = normalizeIntRange(c.TinyblobLength, "Types.Parameters.TINYBLOB_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.TinyblobLength[0] < 0 || c.TinyblobLength[1] > 255 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "TINYBLOB_Length", 0, 255))
+	}
+	c.TinytextCollations, err = checkCollations(c.TinytextCollations, "Types.Parameters.TINYTEXT_Collations")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	c.TinytextLength, err = normalizeIntRange(c.TinytextLength, "Types.Parameters.TINYTEXT_Length")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	if c.TinytextLength[0] < 0 || c.TinytextLength[1] > 255 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "TINYTEXT_Length", 0, 255))
 	}
 	c.VarbinaryLength, err = normalizeIntRange(c.VarbinaryLength, "Types.Parameters.VARBINARY_Length")
 	if err != nil {
@@ -135,8 +229,8 @@ func (c *configTypeParameters) Normalize() error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	if c.VarcharLength[0] < 0 || c.VarcharLength[1] > 16383 {
-		return errors.New(fmt.Sprintf(errParameterInvalidRange, "VARCHAR_Length", 0, 16383))
+	if c.VarcharLength[0] < 0 || c.VarcharLength[1] > 65535 {
+		return errors.New(fmt.Sprintf(errParameterInvalidRange, "VARCHAR_Length", 0, 65535))
 	}
 	return nil
 }

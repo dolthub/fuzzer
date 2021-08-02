@@ -26,6 +26,7 @@ import (
 // Tinyblob represents the TINYBLOB MySQL type.
 type Tinyblob struct {
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Tinyblob)(nil)
@@ -37,7 +38,11 @@ func (t *Tinyblob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (t *Tinyblob) Instance() (TypeInstance, error) {
-	return &TinyblobInstance{ranges.NewInt([]int64{0, 255})}, nil
+	charLength, err := t.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return &TinyblobInstance{ranges.NewInt([]int64{0, charLength})}, nil
 }
 
 // TinyblobInstance is the TypeInstance of Tinyblob.

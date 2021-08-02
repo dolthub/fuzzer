@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"math"
 	"strings"
+	"unicode"
 
 	"github.com/dolthub/go-mysql-server/sql"
 
@@ -55,14 +56,13 @@ func (c *Char) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	return &CharInstance{int(charLength), ranges.NewInt([]int64{0, charLength}), collation}, nil
+	return &CharInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
 }
 
 // CharInstance is the TypeInstance of Char.
 type CharInstance struct {
-	charLength int
-	length     ranges.Int
-	collation  sql.Collation
+	length    ranges.Int
+	collation sql.Collation
 }
 
 var _ TypeInstance = (*CharInstance)(nil)
@@ -77,25 +77,26 @@ func (i *CharInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return CharValue{StringValue(v), i.charLength}, err
+	v = strings.TrimRightFunc(v, unicode.IsSpace)
+	return CharValue{StringValue(v), int(i.length.Upperbound)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *CharInstance) TypeValue() Value {
-	return CharValue{StringValue(""), i.charLength}
+	return CharValue{StringValue(""), int(i.length.Upperbound)}
 }
 
 // Name implements the TypeInstance interface.
 func (i *CharInstance) Name(sqlite bool) string {
 	if sqlite {
-		return fmt.Sprintf("CHAR(%d)", i.charLength)
+		return fmt.Sprintf("CHAR(%d)", i.length.Upperbound)
 	}
-	return fmt.Sprintf("CHAR(%d) COLLATE %s", i.charLength, i.collation.String())
+	return fmt.Sprintf("CHAR(%d) COLLATE %s", i.length.Upperbound, i.collation.String())
 }
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *CharInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // CharValue is the Value type of a CharInstance.

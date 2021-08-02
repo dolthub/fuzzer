@@ -26,6 +26,7 @@ import (
 // Longblob represents the LONGBLOB MySQL type.
 type Longblob struct {
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Longblob)(nil)
@@ -37,7 +38,11 @@ func (l *Longblob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (l *Longblob) Instance() (TypeInstance, error) {
-	return &LongblobInstance{ranges.NewInt([]int64{0, 4294967295})}, nil
+	charLength, err := l.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return &LongblobInstance{ranges.NewInt([]int64{0, charLength})}, nil
 }
 
 // LongblobInstance is the TypeInstance of Longblob.
@@ -75,7 +80,7 @@ func (i *LongblobInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *LongblobInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 4294967296)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // LongblobValue is the Value type of a LongblobInstance.

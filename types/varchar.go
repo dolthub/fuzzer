@@ -23,6 +23,7 @@ import (
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
+	"github.com/dolthub/fuzzer/utils"
 )
 
 // Varchar represents the VARCHAR MySQL type.
@@ -54,14 +55,14 @@ func (v *Varchar) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	return &VarcharInstance{int(charLength), ranges.NewInt([]int64{0, charLength}), collation}, nil
+	charLength = utils.MinInt64(charLength, 65535/collation.CharSet.MaxLength())
+	return &VarcharInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
 }
 
 // VarcharInstance is the TypeInstance of Varchar.
 type VarcharInstance struct {
-	charLength int
-	length     ranges.Int
-	collation  sql.Collation
+	length    ranges.Int
+	collation sql.Collation
 }
 
 var _ TypeInstance = (*VarcharInstance)(nil)
@@ -87,14 +88,14 @@ func (i *VarcharInstance) TypeValue() Value {
 // Name implements the TypeInstance interface.
 func (i *VarcharInstance) Name(sqlite bool) string {
 	if sqlite {
-		return fmt.Sprintf("VARCHAR(%d)", i.charLength)
+		return fmt.Sprintf("VARCHAR(%d)", i.length.Upperbound)
 	}
-	return fmt.Sprintf("VARCHAR(%d) COLLATE %s", i.charLength, i.collation.String())
+	return fmt.Sprintf("VARCHAR(%d) COLLATE %s", i.length.Upperbound, i.collation.String())
 }
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *VarcharInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // VarcharValue is the Value type of a VarcharInstance.

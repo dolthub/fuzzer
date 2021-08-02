@@ -42,13 +42,12 @@ func (v *Varbinary) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	return &VarbinaryInstance{int(charLength), ranges.NewInt([]int64{0, charLength})}, nil
+	return &VarbinaryInstance{ranges.NewInt([]int64{0, charLength})}, nil
 }
 
 // VarbinaryInstance is the TypeInstance of Varbinary.
 type VarbinaryInstance struct {
-	charLength int
-	length     ranges.Int
+	length ranges.Int
 }
 
 var _ TypeInstance = (*VarbinaryInstance)(nil)
@@ -76,12 +75,12 @@ func (i *VarbinaryInstance) Name(sqlite bool) string {
 	if sqlite {
 		return "LONGTEXT"
 	}
-	return fmt.Sprintf("VARBINARY(%d)", i.charLength)
+	return fmt.Sprintf("VARBINARY(%d)", i.length.Upperbound)
 }
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *VarbinaryInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), float64(i.charLength))
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // VarbinaryValue is the Value type of a VarbinaryInstance.

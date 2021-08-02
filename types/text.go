@@ -18,14 +18,19 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
+	"github.com/dolthub/fuzzer/utils"
 )
 
 // Text represents the TEXT MySQL type.
 type Text struct {
+	Collations   []string
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Text)(nil)
@@ -37,12 +42,27 @@ func (t *Text) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (t *Text) Instance() (TypeInstance, error) {
-	return &TextInstance{ranges.NewInt([]int64{0, 16383})}, nil
+	charLength, err := t.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos, err := rand.Uint64()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos %= uint64(len(t.Collations))
+	collation, err := sql.ParseCollation(nil, &t.Collations[colPos], false)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	charLength = utils.MinInt64(charLength, 65535/collation.CharSet.MaxLength())
+	return &TextInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
 }
 
 // TextInstance is the TypeInstance of Text.
 type TextInstance struct {
-	length ranges.Int
+	length    ranges.Int
+	collation sql.Collation
 }
 
 var _ TypeInstance = (*TextInstance)(nil)
@@ -72,7 +92,7 @@ func (i *TextInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *TextInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 16384)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // TextValue is the Value type of a TextInstance.

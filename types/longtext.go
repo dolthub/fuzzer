@@ -18,6 +18,8 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
@@ -25,7 +27,9 @@ import (
 
 // Longtext represents the LONGTEXT MySQL type.
 type Longtext struct {
+	Collations   []string
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Longtext)(nil)
@@ -37,12 +41,26 @@ func (l *Longtext) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (l *Longtext) Instance() (TypeInstance, error) {
-	return &LongtextInstance{ranges.NewInt([]int64{1, 4294967295})}, nil
+	charLength, err := l.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos, err := rand.Uint64()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos %= uint64(len(l.Collations))
+	collation, err := sql.ParseCollation(nil, &l.Collations[colPos], false)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	return &LongtextInstance{ranges.NewInt([]int64{1, charLength}), collation}, nil
 }
 
 // LongtextInstance is the TypeInstance of Longtext.
 type LongtextInstance struct {
-	length ranges.Int
+	length    ranges.Int
+	collation sql.Collation
 }
 
 var _ TypeInstance = (*LongtextInstance)(nil)
@@ -72,7 +90,7 @@ func (i *LongtextInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *LongtextInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 4294967296)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // LongtextValue is the Value type of a LongtextInstance.

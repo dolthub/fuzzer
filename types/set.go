@@ -20,6 +20,8 @@ import (
 	"strings"
 	"unsafe"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
@@ -27,6 +29,7 @@ import (
 
 // Set represents the SET MySQL type.
 type Set struct {
+	Collations        []string
 	Distribution      ranges.Int
 	ElementNameLength ranges.Int
 	NumberOfElements  ranges.Int
@@ -41,6 +44,15 @@ func (s *Set) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (s *Set) Instance() (TypeInstance, error) {
+	colPos, err := rand.Uint64()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos %= uint64(len(s.Collations))
+	collation, err := sql.ParseCollation(nil, &s.Collations[colPos], false)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
 	numOfElements, err := s.NumberOfElements.RandomValue()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -66,13 +78,14 @@ func (s *Set) Instance() (TypeInstance, error) {
 		}
 	}
 	elementMap[""] = 0
-	return &SetInstance{elements, elementMap}, nil
+	return &SetInstance{elements, elementMap, collation}, nil
 }
 
 // SetInstance is the TypeInstance of Set.
 type SetInstance struct {
 	elements   []string
 	elementMap map[string]uint64
+	collation  sql.Collation
 }
 
 var _ TypeInstance = (*SetInstance)(nil)

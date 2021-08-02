@@ -18,14 +18,19 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
+	"github.com/dolthub/fuzzer/utils"
 )
 
 // Tinytext represents the TINYTEXT MySQL type.
 type Tinytext struct {
+	Collations   []string
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Tinytext)(nil)
@@ -37,12 +42,27 @@ func (t *Tinytext) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (t *Tinytext) Instance() (TypeInstance, error) {
-	return &TinytextInstance{ranges.NewInt([]int64{0, 63})}, nil
+	charLength, err := t.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos, err := rand.Uint64()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos %= uint64(len(t.Collations))
+	collation, err := sql.ParseCollation(nil, &t.Collations[colPos], false)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	charLength = utils.MinInt64(charLength, 255/collation.CharSet.MaxLength())
+	return &TinytextInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
 }
 
 // TinytextInstance is the TypeInstance of Tinytext.
 type TinytextInstance struct {
-	length ranges.Int
+	length    ranges.Int
+	collation sql.Collation
 }
 
 var _ TypeInstance = (*TinytextInstance)(nil)
@@ -72,7 +92,7 @@ func (i *TinytextInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *TinytextInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 64)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // TinytextValue is the Value type of a TinytextInstance.

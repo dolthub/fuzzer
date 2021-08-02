@@ -18,14 +18,19 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/dolthub/go-mysql-server/sql"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/ranges"
+	"github.com/dolthub/fuzzer/utils"
 )
 
 // Mediumtext represents the MEDIUMTEXT MySQL type.
 type Mediumtext struct {
+	Collations   []string
 	Distribution ranges.Int
+	Length       ranges.Int
 }
 
 var _ Type = (*Mediumtext)(nil)
@@ -37,12 +42,27 @@ func (m *Mediumtext) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (m *Mediumtext) Instance() (TypeInstance, error) {
-	return &MediumtextInstance{ranges.NewInt([]int64{0, 4194303})}, nil
+	charLength, err := m.Length.RandomValue()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos, err := rand.Uint64()
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	colPos %= uint64(len(m.Collations))
+	collation, err := sql.ParseCollation(nil, &m.Collations[colPos], false)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	charLength = utils.MinInt64(charLength, 16777215/collation.CharSet.MaxLength())
+	return &MediumtextInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
 }
 
 // MediumtextInstance is the TypeInstance of Mediumtext.
 type MediumtextInstance struct {
-	length ranges.Int
+	length    ranges.Int
+	collation sql.Collation
 }
 
 var _ TypeInstance = (*MediumtextInstance)(nil)
@@ -72,7 +92,7 @@ func (i *MediumtextInstance) Name(sqlite bool) string {
 
 // MaxValueCount implements the TypeInstance interface.
 func (i *MediumtextInstance) MaxValueCount() float64 {
-	return math.Pow(float64(rand.StringCharSize()), 4194304)
+	return math.Pow(float64(rand.StringCharSize()), float64(i.length.Upperbound))
 }
 
 // MediumtextValue is the Value type of a MediumtextInstance.
