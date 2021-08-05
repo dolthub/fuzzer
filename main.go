@@ -15,9 +15,12 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/dolthub/dolt/go/cmd/dolt/cli"
 	"github.com/dolthub/dolt/go/libraries/utils/argparser"
@@ -29,8 +32,11 @@ import (
 )
 
 const (
-	configPathParam = "config"
-	cyclesParam     = "cycles"
+	configPathParam   = "config"
+	cyclesParam       = "cycles"
+	repoDonePathParam = "repo-finished"
+	repoWorkPathParam = "repo-working"
+	metricsPathParam  = "metrics"
 )
 
 func main() {
@@ -56,7 +62,7 @@ func main() {
 
 	configPath := "./config.toml"
 	if readParam, ok := apr.GetValue(configPathParam); ok {
-		configPath = readParam
+		configPath = strings.ReplaceAll(readParam, `\`, `/`)
 	}
 	base, err := parameters.LoadFromFile(configPath)
 	if err != nil {
@@ -69,26 +75,86 @@ func main() {
 		os.Exit(1)
 	}
 	cmd.Register(planner.Hooks)
-	cycleCount := -1
+
+	base.Arguments.ConfigPath = configPath
+	base.Arguments.NumOfCycles = -1
 	if readParam, ok := apr.GetInt(cyclesParam); ok {
-		cycleCount = readParam
+		base.Arguments.NumOfCycles = readParam
 	}
-	for i := 0; cycleCount < 0 || i < cycleCount; i++ {
+	base.Arguments.RepoWorkingPath = "./"
+	if readParam, ok := apr.GetValue(repoWorkPathParam); ok {
+		readParam = strings.ReplaceAll(readParam, `\`, `/`)
+		base.Arguments.RepoWorkingPath = readParam
+	}
+	base.Arguments.RepoFinishedPath = "./"
+	if readParam, ok := apr.GetValue(repoDonePathParam); ok {
+		readParam = strings.ReplaceAll(readParam, `\`, `/`)
+		base.Arguments.RepoFinishedPath = readParam
+	}
+	base.Arguments.MetricsPath = ""
+	if readParam, ok := apr.GetValue(metricsPathParam); ok {
+		readParam = strings.ReplaceAll(readParam, `\`, `/`)
+		base.Arguments.MetricsPath = readParam
+	}
+
+	createFolder(base.Arguments.RepoWorkingPath)
+	base.Arguments.RepoWorkingPath = expandPath(base.Arguments.RepoWorkingPath)
+	createFolder(base.Arguments.RepoFinishedPath)
+	base.Arguments.RepoFinishedPath = expandPath(base.Arguments.RepoFinishedPath)
+	if base.Arguments.MetricsPath != "" {
+		createFolder(base.Arguments.MetricsPath)
+		base.Arguments.MetricsPath = expandPath(base.Arguments.MetricsPath)
+	}
+
+	failures := 0
+	for i := 0; base.Arguments.NumOfCycles < 0 || i < base.Arguments.NumOfCycles; i++ {
 		cycle, err := planner.NewCycle()
 		if err != nil {
 			cli.PrintErrf(color.RedString("%+v\n", err))
 		}
-		err = cycle.Run()
+		func() {
+			defer func() {
+				// If a panic slips through the cycle then we should just exit
+				if r := recover(); r != nil {
+					base.Arguments.NumOfCycles = i + 1
+					failures++
+					cli.PrintErrf(color.RedString(fmt.Sprintf("%+v", r)))
+				}
+			}()
+			err = cycle.Run()
+			if err != nil {
+				cli.PrintErrf(color.RedString("%+v\n", err))
+				failures++
+			}
+		}()
+	}
+	if base.Arguments.MetricsPath != "" {
+		metricsFile, err := os.OpenFile(fmt.Sprintf("%s%s.txt", base.Arguments.MetricsPath, time.Now().Format("20060102150405")),
+			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			cli.PrintErrf(color.RedString("%+v\n", err))
+			os.Exit(1)
+		}
+		defer func() {
+			_ = metricsFile.Close()
+		}()
+		_, err = metricsFile.WriteString(fmt.Sprintf(`{"Runs":%d,"Successful":%d,"Failed":%d}`,
+			base.Arguments.NumOfCycles, base.Arguments.NumOfCycles-failures, failures))
+		if err != nil {
+			cli.PrintErrf(color.RedString("%+v\n", err))
+			os.Exit(1)
 		}
 	}
 }
 
 func getArgParser() (*argparser.ArgParser, *argparser.ArgParseResults) {
 	ap := argparser.NewArgParser()
-	ap.SupportsString("config", "", "location", "Specifies a custom location for the config file.")
-	ap.SupportsString("cycles", "", "count", "Controls how many cycles are run. If absent or negative then runs forever.")
+	ap.SupportsString(configPathParam, "", "location", "Specifies a custom location for the config file.")
+	ap.SupportsString(cyclesParam, "", "count", "Controls how many cycles are run. If absent or negative then runs forever.")
+	ap.SupportsString(repoDonePathParam, "", "location", "Specifies a custom location for completed repositories.")
+	ap.SupportsString(repoWorkPathParam, "", "location", "Specifies a custom location for repositories as they're being worked on.")
+	ap.SupportsString(metricsPathParam, "", "location",
+		"Specifies a custom location for where metric logs are stored. Metrics are not created if a location is not specified.")
 	args := os.Args[1:]
 	apr, err := ap.Parse(os.Args[1:])
 	if err != nil {
@@ -109,6 +175,22 @@ func getArgParser() (*argparser.ArgParser, *argparser.ArgParseResults) {
 				usageFunc()()
 				os.Exit(1)
 			}
+
+			if apr.NArg() == 0 {
+				help, _ := cli.HelpAndUsagePrinters(cli.GetCommandDocumentation("fuzzer", cli.CommandDocumentationContent{
+					ShortDesc: "Creates and tests randomly generated repositories",
+					LongDesc: `This tool has the core ability to randomly generate a collection of Dolt repositories, and to perform some kind of
+action(s) on them. This is for the purpose of fuzzing Dolt. Those actions are selectable by usage of different commands.`,
+					Synopsis: []string{"<command> [<option>...]"},
+				}, ap))
+				help()
+				cli.Println(color.New(color.Bold).Sprint("\bCOMMANDS"))
+				cmds := sortedCommands()
+				for _, cmd := range cmds {
+					cli.Printf("\t%s - %s\n", cmd.Name(), cmd.Description())
+				}
+				os.Exit(0)
+			}
 		}
 	}
 	return ap, apr
@@ -116,16 +198,49 @@ func getArgParser() (*argparser.ArgParser, *argparser.ArgParseResults) {
 
 func usageFunc() func() {
 	return func() {
-		var cmds []commands.Command
-		for _, cmd := range commands.Commands {
-			cmds = append(cmds, cmd)
-		}
-		sort.Slice(cmds, func(i, j int) bool {
-			return strings.ToLower(cmds[i].Name()) < strings.ToLower(cmds[j].Name())
-		})
+		cmds := sortedCommands()
 		cli.Println("Valid commands for fuzzer are")
 		for _, cmd := range cmds {
 			cli.Printf("    %16s - %s\n", cmd.Name(), cmd.Description())
 		}
 	}
+}
+
+func sortedCommands() []commands.Command {
+	var cmds []commands.Command
+	for _, cmd := range commands.Commands {
+		cmds = append(cmds, cmd)
+	}
+	sort.Slice(cmds, func(i, j int) bool {
+		return strings.ToLower(cmds[i].Name()) < strings.ToLower(cmds[j].Name())
+	})
+	return cmds
+}
+
+func createFolder(path string) {
+	if path != "./" {
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			err = os.Mkdir(path, os.ModeDir|0777)
+			if err != nil {
+				cli.PrintErrf(color.RedString("%+v\n", err))
+				os.Exit(1)
+			}
+		} else if err != nil {
+			cli.PrintErrf(color.RedString("%+v\n", err))
+			os.Exit(1)
+		}
+	}
+}
+
+func expandPath(path string) string {
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		cli.PrintErrf(color.RedString("%+v\n", err))
+		os.Exit(1)
+	}
+	absPath = strings.ReplaceAll(absPath, `\`, `/`)
+	if absPath[len(absPath)-1] != '/' {
+		absPath += "/"
+	}
+	return absPath
 }

@@ -27,6 +27,7 @@ type Base struct {
 	InterfaceDistribution InterfaceDistribution
 	Options               Options
 	Types                 Types
+	Arguments             Arguments
 }
 
 // InvalidNameRegexes contains regexes that generated names are matched against for validity.
@@ -113,4 +114,13 @@ type Types struct {
 	Varbinary         types.Varbinary
 	Varchar           types.Varchar
 	Year              types.Year
+}
+
+// Arguments represents any arguments that are passed into the program at runtime.
+type Arguments struct {
+	NumOfCycles      int
+	ConfigPath       string
+	RepoFinishedPath string
+	RepoWorkingPath  string
+	MetricsPath      string
 }

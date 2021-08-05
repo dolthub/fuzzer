@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"time"
 
 	"github.com/gocraft/dbr/v2"
 
@@ -56,6 +57,7 @@ func (c *CliQuery) ProvideInterface(caller func(func(string) error) error) error
 			return errors.Wrap(err)
 		}
 		doltQuery := exec.Command("dolt", "sql", "-q", statement)
+		doltQuery.Env = env
 		doltQuery.Stderr = stdErrBuffer
 		err = doltQuery.Run()
 		if err != nil {
@@ -94,6 +96,7 @@ func (c *CliBatch) ProvideInterface(caller func(func(string) error) error) error
 		}
 		stdErrBuffer := &bytes.Buffer{}
 		doltSql := exec.Command("dolt", "sql")
+		doltSql.Env = env
 		doltSql.Stderr = stdErrBuffer
 		doltSql.Stdin = bytes.NewBufferString(statement)
 		err = doltSql.Run()
@@ -129,22 +132,45 @@ func (c *SqlServer) GetOccurrenceRate() (int64, error) {
 // ProvideInterface implements the Interface interface.
 func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err error) {
 	doltSqlServer := exec.Command("dolt", "sql-server", fmt.Sprintf("-P=%d", c.port))
-
-	go func() {
-		_ = doltSqlServer.Run()
-	}()
+	doltSqlServer.Env = env
+	err = doltSqlServer.Start()
+	if err != nil {
+		return errors.Wrap(err)
+	}
 	defer func() {
-		killErr := doltSqlServer.Process.Kill()
-		if err == nil && killErr != nil {
-			err = errors.Wrap(killErr)
+		if doltSqlServer.Process != nil {
+			killErr := doltSqlServer.Process.Kill()
+			if err == nil && killErr != nil {
+				err = errors.Wrap(killErr)
+			}
 		}
 	}()
+
+	// Wait for the process to start before continuing
+	for exitLoop, timeout := false, time.After(5*time.Second); !exitLoop; {
+		select {
+		case <-timeout:
+			return errors.New("unable to connect to dolt sql-server")
+		default:
+			if doltSqlServer.Process != nil {
+				exitLoop = true
+			}
+		}
+	}
 
 	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "localhost", c.port), nil)
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	_ = conn.Ping()
+
+	// We continuously ping until we get a connection
+	for timeout := time.After(5 * time.Second); conn.Ping() != nil; {
+		select {
+		case <-timeout:
+			return errors.New("unable to connect to dolt sql-server")
+		default:
+		}
+	}
 	_, err = conn.Exec(fmt.Sprintf("USE `%s`;", c.dbName))
 	if err != nil {
 		return errors.Wrap(err)
@@ -175,15 +201,39 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 func (c *SqlServer) GetConnection() (*dbr.Connection, *os.Process, *bytes.Buffer, error) {
 	stdErrBuffer := &bytes.Buffer{}
 	doltSqlServer := exec.Command("dolt", "sql-server", fmt.Sprintf("-P=%d", c.port))
+	doltSqlServer.Env = env
 	doltSqlServer.Stderr = stdErrBuffer
-	go func() {
-		_ = doltSqlServer.Run()
-	}()
+	err := doltSqlServer.Start()
+	if err != nil {
+		return nil, nil, nil, errors.Wrap(err)
+	}
+
+	// Wait for the process to start before continuing
+	for exitLoop, timeout := false, time.After(5*time.Second); !exitLoop; {
+		select {
+		case <-timeout:
+			return nil, nil, nil, errors.New("unable to connect to dolt sql-server")
+		default:
+			if doltSqlServer.Process != nil {
+				exitLoop = true
+			}
+		}
+	}
+
 	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "localhost", c.port), nil)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err)
 	}
-	_ = conn.Ping()
+
+	// We continuously ping until we get a connection
+	for timeout := time.After(5 * time.Second); conn.Ping() != nil; {
+		select {
+		case <-timeout:
+			return nil, nil, nil, errors.New("unable to connect to dolt sql-server")
+		default:
+		}
+	}
+
 	_, err = conn.Exec(fmt.Sprintf("USE `%s`;", c.dbName))
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err)

@@ -29,6 +29,8 @@ import (
 	"github.com/dolthub/fuzzer/ranges"
 )
 
+var env = os.Environ()
+
 // Cycle is the orchestrator of a run cycle, which includes the creation of a repository, as well as the execution of
 // any commands obtained from the planner.
 type Cycle struct {
@@ -119,6 +121,7 @@ func newCycle(planner *Planner) (*Cycle, error) {
 // Run runs the cycle.
 func (c *Cycle) Run() (err error) {
 	defer func() {
+		moveRepo := true
 		if r := recover(); r != nil {
 			if rErr, ok := r.(error); ok {
 				err = errors.Wrap(rErr)
@@ -131,6 +134,17 @@ func (c *Cycle) Run() (err error) {
 				fmt.Sprintf("Cycle finished unsuccessfully: %s", time.Now().Format("2006-01-02 15:04:05")))
 			_ = c.Logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
 			_ = c.Logger.Close()
+			func() {
+				errFile, fileErr := os.OpenFile(c.Planner.Base.Arguments.RepoWorkingPath+c.Name+"/err.txt",
+					os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
+				if fileErr != nil {
+					return
+				}
+				defer func() {
+					_ = errFile.Close()
+				}()
+				_, _ = errFile.WriteString(fmt.Sprintf("%+v", err))
+			}()
 		} else {
 			cErr := c.Logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished successfully: %s", time.Now().Format("2006-01-02 15:04:05")))
@@ -142,11 +156,12 @@ func (c *Cycle) Run() (err error) {
 				err = errors.Wrap(cErr)
 			}
 			if c.Planner.Base.Options.DeleteSuccesses {
-				cErr := os.Chdir(c.Planner.workingDirectory)
+				moveRepo = false
+				cErr := os.Chdir(c.Planner.Base.Arguments.RepoWorkingPath)
 				if err == nil && cErr != nil {
 					err = errors.Wrap(cErr)
 				}
-				cErr = os.RemoveAll(fmt.Sprintf("%s/%s", c.Planner.workingDirectory, c.Name))
+				cErr = os.RemoveAll(c.Planner.Base.Arguments.RepoWorkingPath + c.Name)
 				if err == nil && cErr != nil {
 					err = errors.Wrap(cErr)
 				}
@@ -158,6 +173,18 @@ func (c *Cycle) Run() (err error) {
 			for _, commit := range branch.Commits {
 				for _, table := range commit.Tables {
 					table.Data.Close()
+				}
+			}
+		}
+		if moveRepo && c.Planner.Base.Arguments.RepoWorkingPath != c.Planner.Base.Arguments.RepoFinishedPath {
+			_ = os.Chdir(c.Planner.Base.Arguments.RepoWorkingPath)
+			rErr := os.Rename(c.Planner.Base.Arguments.RepoWorkingPath+c.Name, c.Planner.Base.Arguments.RepoFinishedPath+c.Name)
+			if rErr != nil {
+				// If we can't move the finish directory then we should probably panic about it. It's pretty important.
+				if err != nil {
+					panic(err.Error() + "\n" + rErr.Error())
+				} else {
+					panic(rErr)
 				}
 			}
 		}
@@ -282,6 +309,7 @@ func (c *Cycle) CliQuery(args ...string) (string, error) {
 	stdOutBuffer := &bytes.Buffer{}
 	stdErrBuffer := &bytes.Buffer{}
 	doltQuery := exec.Command("dolt", args...)
+	doltQuery.Env = env
 	doltQuery.Stdout = stdOutBuffer
 	doltQuery.Stderr = stdErrBuffer
 	err = doltQuery.Run()
@@ -321,8 +349,8 @@ func (c *Cycle) init() error {
 	dbName := c.Blueprint.CycleStart.Format("20060102150405")
 	c.Name = dbName
 
-	cycleDir := fmt.Sprintf("%s/%s", c.Planner.workingDirectory, dbName)
-	err = os.Mkdir(cycleDir, os.ModeDir)
+	cycleDir := c.Planner.Base.Arguments.RepoWorkingPath + dbName
+	err = os.Mkdir(cycleDir, os.ModeDir|0777)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -332,7 +360,7 @@ func (c *Cycle) init() error {
 	}
 
 	if c.Planner.Base.Options.Logging {
-		logFile, err := os.OpenFile("./log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		logFile, err := os.OpenFile("./log.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
 			return errors.Wrap(err)
 		}

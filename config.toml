@@ -2,11 +2,11 @@
 # All strings are currently limited to ASCII characters.
 
 [Invalid_Name_Regexes]
-Branches = '(\d.*|dolt_.*)'
-Tables = '(\d.*|dolt_.*)'
-Columns = 'dolt_.*'
-Indexes = 'dolt_.*'
-Constraints = 'dolt_.*'
+Branches = '(\d.*|dolt.*|.*_.*)'
+Tables = '(\d.*|dolt.*|.*_.*)'
+Columns = 'dolt.*'
+Indexes = 'dolt.*'
+Constraints = 'dolt.*'
 
 [Amounts]
 Branches = [2, 3]

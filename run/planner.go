@@ -15,12 +15,9 @@
 package run
 
 import (
-	"os"
-	"path/filepath"
 	"runtime"
 	"time"
 
-	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/parameters"
 )
 
@@ -29,17 +26,11 @@ import (
 type Planner struct {
 	Hooks            *Hooks
 	Base             *parameters.Base
-	workingDirectory string
 	lastRunStartTime time.Time
 }
 
 // NewPlanner returns a new *Planner from the given parameters.Base.
 func NewPlanner(base *parameters.Base) (*Planner, error) {
-	workingDirectory, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-	workingDirectory = filepath.ToSlash(workingDirectory)
 	hooks := &Hooks{}
 	(&BlueprintManager{}).Register(hooks)
 	(&RepositoryManager{}).Register(hooks)
@@ -49,7 +40,6 @@ func NewPlanner(base *parameters.Base) (*Planner, error) {
 	return &Planner{
 		Hooks:            hooks,
 		Base:             base,
-		workingDirectory: workingDirectory,
 		lastRunStartTime: time.Unix(0, 0),
 	}, nil
 }
