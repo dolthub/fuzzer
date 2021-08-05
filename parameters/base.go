@@ -15,6 +15,8 @@
 package parameters
 
 import (
+	"time"
+
 	"github.com/dolthub/fuzzer/ranges"
 	"github.com/dolthub/fuzzer/types"
 )
@@ -119,6 +121,7 @@ type Types struct {
 // Arguments represents any arguments that are passed into the program at runtime.
 type Arguments struct {
 	NumOfCycles      int
+	Timeout          time.Duration
 	ConfigPath       string
 	RepoFinishedPath string
 	RepoWorkingPath  string

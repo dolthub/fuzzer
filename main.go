@@ -37,6 +37,7 @@ const (
 	repoDonePathParam = "repo-finished"
 	repoWorkPathParam = "repo-working"
 	metricsPathParam  = "metrics"
+	timeoutParam      = "timeout"
 )
 
 func main() {
@@ -81,12 +82,20 @@ func main() {
 	if readParam, ok := apr.GetInt(cyclesParam); ok {
 		base.Arguments.NumOfCycles = readParam
 	}
+	base.Arguments.Timeout = 0
+	if readParam, ok := apr.GetValue(timeoutParam); ok {
+		base.Arguments.Timeout, err = time.ParseDuration(readParam)
+		if err != nil {
+			cli.PrintErrf(color.RedString("%+v\n", err))
+			os.Exit(1)
+		}
+	}
 	base.Arguments.RepoWorkingPath = "./"
 	if readParam, ok := apr.GetValue(repoWorkPathParam); ok {
 		readParam = strings.ReplaceAll(readParam, `\`, `/`)
 		base.Arguments.RepoWorkingPath = readParam
 	}
-	base.Arguments.RepoFinishedPath = "./"
+	base.Arguments.RepoFinishedPath = base.Arguments.RepoWorkingPath
 	if readParam, ok := apr.GetValue(repoDonePathParam); ok {
 		readParam = strings.ReplaceAll(readParam, `\`, `/`)
 		base.Arguments.RepoFinishedPath = readParam
@@ -106,17 +115,20 @@ func main() {
 		base.Arguments.MetricsPath = expandPath(base.Arguments.MetricsPath)
 	}
 
+	cycleCount := 0
 	failures := 0
-	for i := 0; base.Arguments.NumOfCycles < 0 || i < base.Arguments.NumOfCycles; i++ {
+	startTime := time.Now()
+	for i := 0; (base.Arguments.NumOfCycles < 0 && time.Since(startTime) < base.Arguments.Timeout) || i < base.Arguments.NumOfCycles; i++ {
 		cycle, err := planner.NewCycle()
 		if err != nil {
 			cli.PrintErrf(color.RedString("%+v\n", err))
 		}
+		cycleCount++
 		func() {
 			defer func() {
 				// If a panic slips through the cycle then we should just exit
 				if r := recover(); r != nil {
-					base.Arguments.NumOfCycles = i + 1
+					base.Arguments.NumOfCycles = 1
 					failures++
 					cli.PrintErrf(color.RedString(fmt.Sprintf("%+v", r)))
 				}
@@ -139,7 +151,7 @@ func main() {
 			_ = metricsFile.Close()
 		}()
 		_, err = metricsFile.WriteString(fmt.Sprintf(`{"Runs":%d,"Successful":%d,"Failed":%d}`,
-			base.Arguments.NumOfCycles, base.Arguments.NumOfCycles-failures, failures))
+			cycleCount, cycleCount-failures, failures))
 		if err != nil {
 			cli.PrintErrf(color.RedString("%+v\n", err))
 			os.Exit(1)
@@ -150,13 +162,37 @@ func main() {
 func getArgParser() (*argparser.ArgParser, *argparser.ArgParseResults) {
 	ap := argparser.NewArgParser()
 	ap.SupportsString(configPathParam, "", "location", "Specifies a custom location for the config file.")
-	ap.SupportsString(cyclesParam, "", "count", "Controls how many cycles are run. If absent or negative then runs forever.")
-	ap.SupportsString(repoDonePathParam, "", "location", "Specifies a custom location for completed repositories.")
+	ap.SupportsString(cyclesParam, "", "count", "Controls how many cycles are run. Assuming no timeout, if absent or negative then runs forever.")
+	ap.SupportsString(timeoutParam, "", "duration",
+		`Stops starting new cycles once the timeout has been reached. The specified cycle count overrides this parameter.
+Uses time.ParseDuration, so refer to Go's documentation on allowed strings: https://pkg.go.dev/time#ParseDuration`)
+	ap.SupportsString(repoDonePathParam, "", "location",
+		"Specifies a custom location for completed repositories. Defaults to the working path if not specified.")
 	ap.SupportsString(repoWorkPathParam, "", "location", "Specifies a custom location for repositories as they're being worked on.")
 	ap.SupportsString(metricsPathParam, "", "location",
 		"Specifies a custom location for where metric logs are stored. Metrics are not created if a location is not specified.")
-	args := os.Args[1:]
-	apr, err := ap.Parse(os.Args[1:])
+
+	// Argument parser requires all arguments to be defined upfront, which doesn't work when commands will later define
+	// more arguments. As a result, we remove any arguments that we don't know about here, and the commands will complain
+	// later on.
+	args := make([]string, len(os.Args)-1)
+	copy(args, os.Args[1:])
+	for {
+		_, err := ap.Parse(args)
+		unknownArgErr, ok := err.(argparser.UnknownArgumentParam)
+		if !ok {
+			break
+		}
+		for i, arg := range args {
+			argStr := unknownArgErr.Error()[23:]
+			argStr = argStr[:len(argStr)-1]
+			if arg == "-"+argStr || arg == "--"+argStr {
+				args = append(args[:i], args[i+1:]...)
+			}
+		}
+	}
+
+	apr, err := ap.Parse(args)
 	if err != nil {
 		if err != argparser.ErrHelp {
 			cli.PrintErrln(color.RedString("%v", err.Error()))

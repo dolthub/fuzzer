@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/dolt/go/libraries/utils/file"
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/dolthub/fuzzer/blueprint"
@@ -178,9 +179,9 @@ func (c *Cycle) Run() (err error) {
 		}
 		if moveRepo && c.Planner.Base.Arguments.RepoWorkingPath != c.Planner.Base.Arguments.RepoFinishedPath {
 			_ = os.Chdir(c.Planner.Base.Arguments.RepoWorkingPath)
-			rErr := os.Rename(c.Planner.Base.Arguments.RepoWorkingPath+c.Name, c.Planner.Base.Arguments.RepoFinishedPath+c.Name)
+			rErr := file.Rename(c.Planner.Base.Arguments.RepoWorkingPath+c.Name, c.Planner.Base.Arguments.RepoFinishedPath+c.Name)
 			if rErr != nil {
-				// If we can't move the finish directory then we should probably panic about it. It's pretty important.
+				// If we can't move the finish directory then we should probably panic about it as it's pretty bad.
 				if err != nil {
 					panic(err.Error() + "\n" + rErr.Error())
 				} else {
