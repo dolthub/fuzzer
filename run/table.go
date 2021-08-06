@@ -126,11 +126,11 @@ func (t *Table) CreateString(sqlite bool) string {
 
 // DoltTableHasConflicts returns whether the Dolt table has any conflicts.
 func (t *Table) DoltTableHasConflicts(c *Cycle) (bool, error) {
-	out, err := c.CliQuery("conflicts", "cat", t.Name)
+	out, err := c.CliQuery("sql", "-q", "SELECT COUNT(*) FROM dolt_conflicts_"+t.Name, "-r=json")
 	if err != nil {
 		return false, errors.Wrap(err)
 	}
-	return len(out) > 0, nil
+	return out != `{"rows": [{"COUNT(*)":0}]}`, nil
 }
 
 // GetDoltCursor returns a cursor over Dolt's stored table data.

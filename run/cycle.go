@@ -303,7 +303,15 @@ func (c *Cycle) QueueAction(f func(*Cycle) error) {
 
 // CliQuery is used to run dolt commands on the CLI.
 func (c *Cycle) CliQuery(args ...string) (string, error) {
-	err := c.Logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, args...), " "))
+	formattedArgs := make([]string, len(args))
+	copy(formattedArgs, args)
+	for i, arg := range formattedArgs {
+		if strings.Contains(arg, " ") {
+			formattedArgs[i] = `"`+strings.ReplaceAll(arg, `"`, `\"`)+`"`
+		}
+	}
+
+	err := c.Logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, formattedArgs...), " "))
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
