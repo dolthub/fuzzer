@@ -9,9 +9,6 @@ jobs:
     name: Create Dolt Issue found by Dolthub/Fuzzer
     runs-on: ubuntu-18.04
     steps:
-      - name: Print payload
-        run: |
-          echo "${{ github.event.client_payload }}"
       - uses: actions/github-script@v4
         env:
           ASSIGNEE: ${{ github.event.client_payload.assignee }}
@@ -24,11 +21,8 @@ jobs:
               const { owner, repo } = context.repo;
 
               const body = `
-                Database in error, assets found here ${URL}.
-
-                Contents of err.txt:
-
-                ${BODY}
+                <p>Database in error, assets found <a href=${URL}>here</a></p>
+                <code>${BODY}</code>
               `;
 
               await github.issues.create({
@@ -38,6 +32,7 @@ jobs:
                 assignee: ASSIGNEE,
                 body,
               });
+
               process.exit(0);
             } catch (err) {
               console.log("Error:", err);
