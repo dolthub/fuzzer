@@ -21,8 +21,8 @@ jobs:
               const { owner, repo } = context.repo;
 
               const body = `
-                <p>Database in error, assets found <a href=${URL}>here</a></p>
-                <code>${BODY}</code>
+                Database in error, assets found at ${URL}
+                \`\`\`${BODY}\`\`\`
               `;
 
               await github.issues.create({
