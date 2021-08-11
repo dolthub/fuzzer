@@ -131,7 +131,7 @@ func (c *SqlServer) GetOccurrenceRate() (int64, error) {
 
 // ProvideInterface implements the Interface interface.
 func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err error) {
-	doltSqlServer := exec.Command("dolt", "sql-server", fmt.Sprintf("-P=%d", c.port))
+	doltSqlServer := exec.Command("dolt", "sql-server", "-H=0.0.0.0", fmt.Sprintf("-P=%d", c.port))
 	doltSqlServer.Env = env
 	err = doltSqlServer.Start()
 	if err != nil {
@@ -158,7 +158,7 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 		}
 	}
 
-	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "localhost", c.port), nil)
+	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "0.0.0.0", c.port), nil)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -200,7 +200,7 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 // GetConnection returns a connection to the Dolt database for use with querying table data.
 func (c *SqlServer) GetConnection() (*dbr.Connection, *os.Process, *bytes.Buffer, error) {
 	stdErrBuffer := &bytes.Buffer{}
-	doltSqlServer := exec.Command("dolt", "sql-server", fmt.Sprintf("-P=%d", c.port))
+	doltSqlServer := exec.Command("dolt", "sql-server", "-H=0.0.0.0", fmt.Sprintf("-P=%d", c.port))
 	doltSqlServer.Env = env
 	doltSqlServer.Stderr = stdErrBuffer
 	err := doltSqlServer.Start()
@@ -220,7 +220,7 @@ func (c *SqlServer) GetConnection() (*dbr.Connection, *os.Process, *bytes.Buffer
 		}
 	}
 
-	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "localhost", c.port), nil)
+	conn, err := dbr.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%d)/", "root", "", "0.0.0.0", c.port), nil)
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err)
 	}
