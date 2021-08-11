@@ -1,4 +1,4 @@
-#name: Fuzzer Create Issue
+name: Fuzzer Create Issue
 
 on:
   repository_dispatch:
@@ -12,3 +12,34 @@ jobs:
       - name: Print payload
         run: |
           echo "${{ github.event.client_payload }}"
+      - uses: actions/github-script@v4
+        env:
+          ASSIGNEE: ${{ github.event.client_payload.assignee }}
+          URL: ${{ github.event.client_payload.url }}
+          BODY: ${{ github.event.client_payload.errors }}
+        with:
+          script: |
+            try {
+              const { ASSIGNEE, URL, BODY } = process.env;
+              const { owner, repo } = context.repo;
+
+              const body = `
+                Database in error, assets found here ${URL}.
+
+                Contents of err.txt:
+
+                ${BODY}
+              `;
+
+              await github.issues.create({
+                title: "Fuzzer found Dolt issue",
+                owner,
+                repo,
+                assignee: ASSIGNEE,
+                body,
+              });
+              process.exit(0);
+            } catch (err) {
+              console.log("Error:", err);
+              process.exit(1);
+            }
