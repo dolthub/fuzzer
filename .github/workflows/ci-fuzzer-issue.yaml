@@ -14,13 +14,14 @@ jobs:
           ASSIGNEE: ${{ github.event.client_payload.assignee }}
           URL: ${{ github.event.client_payload.url }}
           BODY: ${{ github.event.client_payload.errors }}
+          VERSION: ${{ github.event.client_payload.dolt_version }}
         with:
           script: |
             try {
-              const { ASSIGNEE, URL, BODY } = process.env;
+              const { ASSIGNEE, URL, VERSION, BODY } = process.env;
               const { owner, repo } = context.repo;
 
-              const body = `Database in error, assets found at ${URL}  ` + BODY;
+              const body = `Database in error for dolt version ${VERSION}, assets found at ${URL}  ` + BODY;
 
               await github.issues.create({
                 title: "Fuzzer found Dolt issue",
