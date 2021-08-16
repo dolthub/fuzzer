@@ -21,7 +21,8 @@ jobs:
               const { ASSIGNEE, URL, VERSION, BODY } = process.env;
               const { owner, repo } = context.repo;
 
-              const body = `Database in error for dolt version ${VERSION}, assets found at ${URL}  ` + BODY;
+              const CODEDELIMITER = "```"
+              const body = `Database in error for dolt version ${VERSION}, assets found at:\n${URL}\n${CODEDELIMITER}\n${BODY}\n${CODEDELIMITER}`;
 
               await github.issues.create({
                 title: "Fuzzer found Dolt issue",
