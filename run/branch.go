@@ -214,7 +214,7 @@ func (b *Branch) NewTable(c *Cycle) (*Table, error) {
 		Param1: table,
 	}
 	return table, c.UseInterface(1, func(f func(string) error) error {
-		return f(table.CreateString(false))
+		return f(table.CreateString(false, false))
 	})
 }
 

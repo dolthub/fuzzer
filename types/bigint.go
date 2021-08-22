@@ -131,3 +131,8 @@ func (v BigintValue) MySQLString() string {
 func (v BigintValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v BigintValue) CSVString() string {
+	return v.String()
+}

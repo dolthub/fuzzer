@@ -135,3 +135,8 @@ func (v BigintUnsignedValue) MySQLString() string {
 func (v BigintUnsignedValue) SQLiteString() string {
 	return formatUint64Sqlite(uint64(v.Uint64Value))
 }
+
+// CSVString implements the interface Value.
+func (v BigintUnsignedValue) CSVString() string {
+	return v.String()
+}

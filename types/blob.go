@@ -62,12 +62,12 @@ func (i *BlobInstance) Get() (Value, error) {
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
 	}
-	return VarbinaryValue{StringValue(v)}, err
+	return BlobValue{StringValue(v)}, err
 }
 
 // TypeValue implements the TypeInstance interface.
 func (i *BlobInstance) TypeValue() Value {
-	return VarbinaryValue{StringValue("")}
+	return BlobValue{StringValue("")}
 }
 
 // Name implements the TypeInstance interface.
@@ -116,4 +116,9 @@ func (v BlobValue) MySQLString() string {
 // SQLiteString implements the Value interface.
 func (v BlobValue) SQLiteString() string {
 	return v.String()
+}
+
+// CSVString implements the interface Value.
+func (v BlobValue) CSVString() string {
+	return v.StringTerminating(34)
 }

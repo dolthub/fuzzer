@@ -11,4 +11,5 @@ require (
 	github.com/gocraft/dbr/v2 v2.7.1
 	github.com/komkom/toml v0.0.0-20210317065440-24f427ca88cc
 	github.com/pkg/errors v0.9.1
+	github.com/stretchr/testify v1.7.0
 )

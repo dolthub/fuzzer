@@ -173,3 +173,8 @@ func (v EnumValue) MySQLString() string {
 func (v EnumValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v EnumValue) CSVString() string {
+	return v.String()
+}

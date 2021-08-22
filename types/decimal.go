@@ -65,6 +65,7 @@ var _ TypeInstance = (*DecimalInstance)(nil)
 
 // Get implements the TypeInstance interface.
 func (i *DecimalInstance) Get() (Value, error) {
+	// We don't return any negative values as they're harder to properly sort by string
 	beforeDecimal, err := rand.Bytes(i.precision - i.scale)
 	if err != nil {
 		return NilValue{}, errors.Wrap(err)
@@ -170,6 +171,22 @@ func (v DecimalValue) Name() string {
 	return "DECIMAL"
 }
 
+// Compare implements the ValuePrimitive interface. This overrides the inner primitive's Compare function, as the inner
+// value does not sort properly based on the specific properties of this value.
+func (v DecimalValue) Compare(other ValuePrimitive) int {
+	if otherTime, ok := other.(DecimalValue); ok {
+		vVal := v.SQLiteString()
+		otherVal := otherTime.SQLiteString()
+		if vVal < otherVal {
+			return -1
+		} else if vVal > otherVal {
+			return 1
+		}
+		return 0
+	}
+	return v.StringValue.Compare(other)
+}
+
 // MySQLString implements the Value interface.
 func (v DecimalValue) MySQLString() string {
 	return v.String()
@@ -193,4 +210,9 @@ func (v DecimalValue) SQLiteString() string {
 		strBytes[i] = '0'
 	}
 	return StringValue(*(*string)(unsafe.Pointer(&strBytes))).String()
+}
+
+// CSVString implements the interface Value.
+func (v DecimalValue) CSVString() string {
+	return v.StringTerminating(34)
 }

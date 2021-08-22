@@ -307,7 +307,7 @@ func (c *Cycle) CliQuery(args ...string) (string, error) {
 	copy(formattedArgs, args)
 	for i, arg := range formattedArgs {
 		if strings.Contains(arg, " ") {
-			formattedArgs[i] = `"`+strings.ReplaceAll(arg, `"`, `\"`)+`"`
+			formattedArgs[i] = `"` + strings.ReplaceAll(arg, `"`, `\"`) + `"`
 		}
 	}
 

@@ -182,3 +182,8 @@ func (v SetValue) MySQLString() string {
 func (v SetValue) SQLiteString() string {
 	return formatUint64Sqlite(uint64(v.Uint64Value))
 }
+
+// CSVString implements the interface Value.
+func (v SetValue) CSVString() string {
+	return v.String()
+}

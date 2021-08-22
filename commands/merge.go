@@ -16,6 +16,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"time"
@@ -64,7 +65,10 @@ type mergeConflict struct {
 
 // mergeTableWithConflicts is a merged table with its associated conflicts.
 type mergeTableWithConflicts struct {
-	table     *run.Table
+	base      *run.Table
+	ours      *run.Table
+	theirs    *run.Table
+	final     *run.Table
 	conflicts []run.Row
 }
 
@@ -181,6 +185,11 @@ func (m *Merge) Run(c *run.Cycle) error {
 	}
 
 	var finalTables []mergeTableWithConflicts
+	defer func() {
+		for _, finalTable := range finalTables {
+			finalTable.final.Data.Close()
+		}
+	}()
 	for _, mt := range allMergeTables {
 		mtc, err := mt.ProcessMerge()
 		if err != nil {
@@ -196,7 +205,12 @@ func (m *Merge) Run(c *run.Cycle) error {
 	for _, finalTable := range finalTables {
 		err = finalTable.Verify(c)
 		if err != nil {
-			return errors.Wrap(err)
+			fErr := finalTable.Export(c)
+			if fErr != nil {
+				return errors.New(fmt.Sprintf("Error 1: %s\n\nError 2: %s", err.Error(), fErr.Error()))
+			} else {
+				return errors.Wrap(err)
+			}
 		}
 	}
 	_, err = c.CliQuery("merge", "--abort")
@@ -333,7 +347,10 @@ func (mc mergeCommits) GetTables() ([]mergeTables, error) {
 func (mt mergeTables) ProcessMerge() (mergeTableWithConflicts, error) {
 	if mt.final != nil {
 		return mergeTableWithConflicts{
-			table:     mt.final,
+			ours:      mt.ours,
+			theirs:    mt.theirs,
+			base:      mt.base,
+			final:     mt.final,
 			conflicts: nil,
 		}, nil
 	}
@@ -548,7 +565,10 @@ func (mt mergeTables) ProcessMerge() (mergeTableWithConflicts, error) {
 		return conflicts[i].Compare(conflicts[j]) == -1
 	})
 	return mergeTableWithConflicts{
-		table:     final,
+		ours:      mt.ours,
+		theirs:    mt.theirs,
+		base:      mt.base,
+		final:     final,
 		conflicts: conflicts,
 	}, nil
 }
@@ -592,14 +612,255 @@ func (mc mergeConflict) ToRow(table *run.Table) run.Row {
 	}
 }
 
+// Export writes all four internal tables (base, ours, theirs, merged) involved in the merge, the conflicts, and a shell
+// script to set up and import all the data into a Dolt instance.
+func (mtc mergeTableWithConflicts) Export(c *run.Cycle) (err error) {
+	err = os.Mkdir(c.Planner.Base.Arguments.RepoWorkingPath+c.Name+"/internal_data", 0777)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = mtc.final.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/merged_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = mtc.ours.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/our_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = mtc.theirs.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/their_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = mtc.base.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/base_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = mtc.exportConflictsToCSV(c)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = mtc.exportShellSetup(c)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	return nil
+}
+
+// exportConflictsToCSV writes the conflict data to a CSV in the working directory.
+func (mtc mergeTableWithConflicts) exportConflictsToCSV(c *run.Cycle) error {
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/internal_data/conflicts.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	defer func() {
+		fErr := file.Close()
+		if fErr != nil && err == nil {
+			err = errors.Wrap(fErr)
+		}
+	}()
+
+	// Write the column header row
+	firstItem := true
+	for _, pkCol := range mtc.base.PKCols {
+		if firstItem {
+			firstItem = false
+		} else {
+			_, err = file.WriteString(",")
+			if err != nil {
+				return errors.Wrap(err)
+			}
+		}
+		_, err = file.WriteString("base_" + pkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	for _, nonPkCol := range mtc.base.NonPKCols {
+		if firstItem {
+			firstItem = false
+		} else {
+			_, err = file.WriteString(",")
+			if err != nil {
+				return errors.Wrap(err)
+			}
+		}
+		_, err = file.WriteString("base_" + nonPkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	for _, pkCol := range mtc.ours.PKCols {
+		_, err = file.WriteString(",our_" + pkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	for _, nonPkCol := range mtc.ours.NonPKCols {
+		_, err = file.WriteString(",our_" + nonPkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	for _, pkCol := range mtc.theirs.PKCols {
+		_, err = file.WriteString(",their_" + pkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	for _, nonPkCol := range mtc.theirs.NonPKCols {
+		_, err = file.WriteString(",their_" + nonPkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	_, err = file.WriteString("\n")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+
+	// Write the rows
+	for _, conflictsRow := range mtc.conflicts {
+		_, err = file.WriteString(conflictsRow.CSVString())
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		_, err = file.WriteString("\n")
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	return nil
+}
+
+// exportShellSetup writes a shell setup file that will import the four tables and conflict data into a Dolt instance.
+func (mtc mergeTableWithConflicts) exportShellSetup(c *run.Cycle) error {
+	file, err := os.OpenFile(fmt.Sprintf("%s%s/internal_data/setup.sh", c.Planner.Base.Arguments.RepoWorkingPath, c.Name),
+		os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	defer func() {
+		fErr := file.Close()
+		if fErr != nil && err == nil {
+			err = errors.Wrap(fErr)
+		}
+	}()
+
+	_, err = file.WriteString("#!/bin/sh\nset -e\n\ndolt init\ndolt sql <<\"SQL\"\n")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("%s\n",
+		strings.Replace(
+			mtc.base.CreateString(true, false),
+			fmt.Sprintf("`%s`", mtc.base.Name),
+			fmt.Sprintf("`base_%s`", mtc.final.Name),
+			1,
+		)))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("%s\n",
+		strings.Replace(
+			mtc.ours.CreateString(true, false),
+			fmt.Sprintf("`%s`", mtc.ours.Name),
+			fmt.Sprintf("`our_%s`", mtc.final.Name),
+			1,
+		)))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("%s\n",
+		strings.Replace(
+			mtc.theirs.CreateString(true, false),
+			fmt.Sprintf("`%s`", mtc.theirs.Name),
+			fmt.Sprintf("`their_%s`", mtc.final.Name),
+			1,
+		)))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("%s\n",
+		strings.Replace(
+			mtc.final.CreateString(true, false),
+			fmt.Sprintf("`%s`", mtc.final.Name),
+			fmt.Sprintf("`merged_%s`", mtc.final.Name),
+			1,
+		)))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(mtc.createConflictsTable())
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString("SQL\n")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("dolt table import -u base_%s base_%s.csv\n", mtc.final.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("dolt table import -u our_%s our_%s.csv\n", mtc.final.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("dolt table import -u their_%s their_%s.csv\n", mtc.final.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString(fmt.Sprintf("dolt table import -u merged_%s merged_%s.csv\n", mtc.final.Name, mtc.final.Name))
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = file.WriteString("dolt table import -u conflicts conflicts.csv\n")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	return nil
+}
+
+// createConflictsTable returns a CREATE TABLE string that may be used to import the conflict data.
+func (mtc mergeTableWithConflicts) createConflictsTable() string {
+	sb1 := strings.Builder{}
+	sb1.Grow(512)
+	for _, pkCol := range mtc.base.PKCols {
+		sb1.WriteString(fmt.Sprintf("base_%s %s, ", pkCol.Name, pkCol.Type.Name(false)))
+	}
+	for _, nonPkCol := range mtc.base.NonPKCols {
+		sb1.WriteString(fmt.Sprintf("base_%s %s, ", nonPkCol.Name, nonPkCol.Type.Name(false)))
+	}
+	for _, pkCol := range mtc.ours.PKCols {
+		sb1.WriteString(fmt.Sprintf("our_%s %s, ", pkCol.Name, pkCol.Type.Name(false)))
+	}
+	for _, nonPkCol := range mtc.ours.NonPKCols {
+		sb1.WriteString(fmt.Sprintf("our_%s %s, ", nonPkCol.Name, nonPkCol.Type.Name(false)))
+	}
+	for _, pkCol := range mtc.theirs.PKCols {
+		sb1.WriteString(fmt.Sprintf("their_%s %s, ", pkCol.Name, pkCol.Type.Name(false)))
+	}
+	for _, nonPkCol := range mtc.theirs.NonPKCols {
+		sb1.WriteString(fmt.Sprintf("their_%s %s, ", nonPkCol.Name, nonPkCol.Type.Name(false)))
+	}
+
+	// Remove the last comma and space from the end of the column names
+	str := sb1.String()
+	return fmt.Sprintf("CREATE TABLE conflicts (%s);\n", str[:len(str)-2])
+}
+
 // Verify verifies that the table merged as expected, including checking for conflicts.
 func (mtc mergeTableWithConflicts) Verify(c *run.Cycle) error {
-	internalCursor, err := mtc.table.Data.GetRowCursor()
+	internalCursor, err := mtc.final.Data.GetRowCursor()
 	if err != nil {
 		return errors.Wrap(err)
 	}
 	defer internalCursor.Close()
-	doltCursor, err := mtc.table.GetDoltCursor(c)
+	doltCursor, err := mtc.final.GetDoltCursor(c)
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -612,14 +873,14 @@ func (mtc mergeTableWithConflicts) Verify(c *run.Cycle) error {
 	for iRow, ok, err = internalCursor.NextRow(); ok && err == nil; iRow, ok, err = internalCursor.NextRow() {
 		dRow, ok, err := doltCursor.NextRow()
 		if !ok {
-			return errors.New(fmt.Sprintf("On table `%s`, internal data contains more rows than Dolt", mtc.table.Name))
+			return errors.New(fmt.Sprintf("On table `%s`, internal data contains more rows than Dolt", mtc.final.Name))
 		}
 		if err != nil {
 			return errors.Wrap(err)
 		}
 		if !iRow.Equals(dRow) {
 			return errors.New(fmt.Sprintf("On table `%s`, internal data contains [%s]\nDolt contains [%s]",
-				mtc.table.Name, iRow.MySQLString(), dRow.MySQLString()))
+				mtc.final.Name, iRow.MySQLString(), dRow.MySQLString()))
 		}
 	}
 	if err != nil {
@@ -628,20 +889,20 @@ func (mtc mergeTableWithConflicts) Verify(c *run.Cycle) error {
 
 	_, ok, err = doltCursor.NextRow()
 	if ok {
-		return errors.New(fmt.Sprintf("On table `%s`, Dolt contains more rows than internal data", mtc.table.Name))
+		return errors.New(fmt.Sprintf("On table `%s`, Dolt contains more rows than internal data", mtc.final.Name))
 	}
 	if err != nil {
 		return errors.Wrap(err)
 	}
 	_ = doltCursor.Close()
 
-	if ok, err = mtc.table.DoltTableHasConflicts(c); err != nil {
+	if ok, err = mtc.final.DoltTableHasConflicts(c); err != nil {
 		return errors.Wrap(err)
 	} else if ok {
 		if len(mtc.conflicts) == 0 {
-			return errors.New(fmt.Sprintf("On table `%s`, Dolt contains conflicts while internal data does not", mtc.table.Name))
+			return errors.New(fmt.Sprintf("On table `%s`, Dolt contains conflicts while internal data does not", mtc.final.Name))
 		}
-		doltConflictsCursor, err := mtc.table.GetDoltConflictsCursor(c)
+		doltConflictsCursor, err := mtc.final.GetDoltConflictsCursor(c)
 		if err != nil {
 			return errors.Wrap(err)
 		}
@@ -652,17 +913,17 @@ func (mtc mergeTableWithConflicts) Verify(c *run.Cycle) error {
 		var dConflictRow run.Row
 		for dConflictRow, ok, err = doltConflictsCursor.NextRow(); ok && err == nil; dConflictRow, ok, err = doltConflictsCursor.NextRow() {
 			if conflictIdx >= len(mtc.conflicts) {
-				return errors.New(fmt.Sprintf("On table `%s`, internal conflicts contain more conflicts than Dolt", mtc.table.Name))
+				return errors.New(fmt.Sprintf("On table `%s`, internal conflicts contain more conflicts than Dolt", mtc.final.Name))
 			}
 			iConflictRow := mtc.conflicts[conflictIdx]
 			conflictIdx++
 			if !iConflictRow.Equals(dConflictRow) {
 				return errors.New(fmt.Sprintf("On table `%s`, internal conflict contains [%s]\nDolt contains [%s]",
-					mtc.table.Name, iConflictRow.MySQLString(), dConflictRow.MySQLString()))
+					mtc.final.Name, iConflictRow.MySQLString(), dConflictRow.MySQLString()))
 			}
 		}
 	} else if len(mtc.conflicts) > 0 {
-		return errors.New(fmt.Sprintf("On table `%s`, Dolt does not contain conflicts while internal data does", mtc.table.Name))
+		return errors.New(fmt.Sprintf("On table `%s`, Dolt does not contain conflicts while internal data does", mtc.final.Name))
 	}
 	return nil
 }

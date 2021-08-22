@@ -132,3 +132,8 @@ func (v VarcharValue) MySQLString() string {
 func (v VarcharValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v VarcharValue) CSVString() string {
+	return v.StringTerminating(34)
+}
