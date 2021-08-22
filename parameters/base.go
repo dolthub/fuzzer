@@ -122,6 +122,7 @@ type Types struct {
 type Arguments struct {
 	NumOfCycles      int
 	Timeout          time.Duration
+	FirstError       bool
 	ConfigPath       string
 	RepoFinishedPath string
 	RepoWorkingPath  string

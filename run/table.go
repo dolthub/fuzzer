@@ -59,16 +59,16 @@ func NewTable(parent *Commit, name string, pkCols []*Column, nonPKCols []*Column
 		Indexes:   indexes,
 	}
 	var err error
-	table.Data, err = CreateTableData(name, table.CreateString(true), pkCols, nonPKCols)
+	table.Data, err = CreateTableData(name, table.CreateString(false, true), pkCols, nonPKCols)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 	return table, nil
 }
 
-// CreateString returns the table as a `CREATE TABLE` string. Setting `sqlite` to true removes collations and other
-// MySQL-specific strings that SQLite fails on.
-func (t *Table) CreateString(sqlite bool) string {
+// CreateString returns the table as a `CREATE TABLE` string. Setting `columnOnly` to true leaves only the column name,
+// type, and primary key. Setting `sqlite` to true removes collations and other MySQL-specific strings that SQLite fails on.
+func (t *Table) CreateString(columnOnly bool, sqlite bool) string {
 	needComma := false
 	sb := strings.Builder{}
 	sb.Grow(512)
@@ -107,17 +107,19 @@ func (t *Table) CreateString(sqlite bool) string {
 		}
 		sb.WriteRune(')')
 	}
-	for _, index := range t.Indexes {
-		sb.WriteString(", ")
-		sb.WriteString(index.String())
-	}
-	if !sqlite {
-		for _, fk := range t.Parent.ForeignKeys {
-			if fk.TableName != t.Name {
-				continue
-			}
+	if !columnOnly {
+		for _, index := range t.Indexes {
 			sb.WriteString(", ")
-			sb.WriteString(fk.String())
+			sb.WriteString(index.String())
+		}
+		if !sqlite {
+			for _, fk := range t.Parent.ForeignKeys {
+				if fk.TableName != t.Name {
+					continue
+				}
+				sb.WriteString(", ")
+				sb.WriteString(fk.String())
+			}
 		}
 	}
 	sb.WriteString(");")

@@ -18,6 +18,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
 
 	_ "github.com/dolthub/go-sqlite3"
 
@@ -224,11 +225,81 @@ func (td *TableData) Copy() (*TableData, error) {
 	return newTableData, nil
 }
 
-// Close closes the underlying connection and frees resources.
+func (td *TableData) ExportToCSV(filePath string) (err error) {
+	rowCursor, err := td.GetRowCursor()
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	defer rowCursor.Close()
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	defer func() {
+		fErr := file.Close()
+		if fErr != nil && err == nil {
+			err = errors.Wrap(fErr)
+		}
+	}()
+
+	firstItem := true
+	for _, pkCol := range td.pkCols {
+		if firstItem {
+			firstItem = false
+		} else {
+			_, err = file.WriteString(",")
+			if err != nil {
+				return errors.Wrap(err)
+			}
+		}
+		_, err = file.WriteString(pkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	for _, nonPkCol := range td.nonPKCols {
+		if firstItem {
+			firstItem = false
+		} else {
+			_, err = file.WriteString(",")
+			if err != nil {
+				return errors.Wrap(err)
+			}
+		}
+		_, err = file.WriteString(nonPkCol.Name)
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	_, err = file.WriteString("\n")
+	if err != nil {
+		return errors.Wrap(err)
+	}
+
+	var iRow Row
+	var ok bool
+	for iRow, ok, err = rowCursor.NextRow(); ok && err == nil; iRow, ok, err = rowCursor.NextRow() {
+		_, err = file.WriteString(iRow.CSVString())
+		if err != nil {
+			return errors.Wrap(err)
+		}
+		_, err = file.WriteString("\n")
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	return nil
+}
+
+// Close closes the underlying connection and frees resources. Cannot panic.
 func (td *TableData) Close() {
 	defer func() {
 		_ = recover()
 	}()
+	_ = td.Exec(fmt.Sprintf("DROP TABLE `%s`;", td.tableName))
 	_ = td.connection.Close()
 }
 

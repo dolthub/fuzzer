@@ -124,3 +124,8 @@ func (v DoubleValue) SQLiteString() string {
 	bitPattern ^= (0xffffffffffffffff * (bitPattern >> 63)) + (0x8000000000000000 - (0x8000000000000000 * (bitPattern >> 63)))
 	return formatUint64Sqlite(bitPattern)
 }
+
+// CSVString implements the interface Value.
+func (v DoubleValue) CSVString() string {
+	return v.String()
+}

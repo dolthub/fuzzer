@@ -124,3 +124,8 @@ func (v FloatValue) SQLiteString() string {
 	bitPattern ^= (0xffffffff * (bitPattern >> 31)) + (0x80000000 - (0x80000000 * (bitPattern >> 31)))
 	return formatUint32Sqlite(bitPattern)
 }
+
+// CSVString implements the interface Value.
+func (v FloatValue) CSVString() string {
+	return v.String()
+}

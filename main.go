@@ -34,9 +34,10 @@ import (
 const (
 	configPathParam   = "config"
 	cyclesParam       = "cycles"
+	firstErrorParam   = "first-error"
+	metricsPathParam  = "metrics"
 	repoDonePathParam = "repo-finished"
 	repoWorkPathParam = "repo-working"
-	metricsPathParam  = "metrics"
 	timeoutParam      = "timeout"
 )
 
@@ -90,6 +91,7 @@ func main() {
 			os.Exit(1)
 		}
 	}
+	base.Arguments.FirstError = apr.Contains(firstErrorParam)
 	base.Arguments.RepoWorkingPath = "./"
 	if readParam, ok := apr.GetValue(repoWorkPathParam); ok {
 		readParam = strings.ReplaceAll(readParam, `\`, `/`)
@@ -122,6 +124,9 @@ func main() {
 		cycle, err := planner.NewCycle()
 		if err != nil {
 			cli.PrintErrf(color.RedString("%+v\n", err))
+			if base.Arguments.FirstError {
+				break
+			}
 		}
 		cycleCount++
 		func() {
@@ -133,10 +138,12 @@ func main() {
 					cli.PrintErrf(color.RedString(fmt.Sprintf("%+v", r)))
 				}
 			}()
-			err = cycle.Run()
-			if err != nil {
+			if err = cycle.Run(); err != nil {
 				cli.PrintErrf(color.RedString("%+v\n", err))
 				failures++
+				if base.Arguments.FirstError {
+					base.Arguments.NumOfCycles = 1
+				}
 			}
 		}()
 	}
@@ -166,6 +173,7 @@ func getArgParser() (*argparser.ArgParser, *argparser.ArgParseResults) {
 	ap.SupportsString(timeoutParam, "", "duration",
 		`Stops starting new cycles once the timeout has been reached. The specified cycle count overrides this parameter.
 Uses time.ParseDuration, so refer to Go's documentation on allowed strings: https://pkg.go.dev/time#ParseDuration`)
+	ap.SupportsFlag(firstErrorParam, "", "If specified, immediately stops the fuzzer when the first error is encountered.")
 	ap.SupportsString(repoDonePathParam, "", "location",
 		"Specifies a custom location for completed repositories. Defaults to the working path if not specified.")
 	ap.SupportsString(repoWorkPathParam, "", "location", "Specifies a custom location for repositories as they're being worked on.")

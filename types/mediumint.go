@@ -129,3 +129,8 @@ func (v MediumintValue) MySQLString() string {
 func (v MediumintValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v MediumintValue) CSVString() string {
+	return v.String()
+}

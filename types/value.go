@@ -49,6 +49,8 @@ type Value interface {
 	MySQLString() string
 	// SQLiteString returns the Value as a string for insertion into SQLite specifically.
 	SQLiteString() string
+	// CSVString returns the Value as a string for insertion into a CSV file.
+	CSVString() string
 }
 
 // NilValue is the Value type of a nil. This is a full Value rather than a ValuePrimitive as it should not be built on
@@ -88,6 +90,11 @@ func (v NilValue) MySQLString() string {
 // SQLiteString implements the interface Value.
 func (v NilValue) SQLiteString() string {
 	return v.String()
+}
+
+// CSVString implements the interface Value.
+func (v NilValue) CSVString() string {
+	return ""
 }
 
 // Compare implements the interface ValuePrimitive.
@@ -511,10 +518,15 @@ var _ ValuePrimitive = StringValue("")
 
 // String implements the interface ValuePrimitive.
 func (v StringValue) String() string {
+	return v.StringTerminating(39)
+}
+
+// StringTerminating returns the string with the given character as the end terminals.
+func (v StringValue) StringTerminating(char byte) string {
 	out := make([]byte, len(v)+2)
 	copy(out[1:], v)
-	out[0] = 39
-	out[len(out)-1] = 39
+	out[0] = char
+	out[len(out)-1] = char
 	return *(*string)(unsafe.Pointer(&out))
 }
 

@@ -131,3 +131,8 @@ func (v IntUnsignedValue) MySQLString() string {
 func (v IntUnsignedValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v IntUnsignedValue) CSVString() string {
+	return v.String()
+}

@@ -110,6 +110,22 @@ func (v TimeValue) Name() string {
 	return "TIME"
 }
 
+// Compare implements the ValuePrimitive interface. This overrides the inner primitive's Compare function, as the inner
+// value does not sort properly based on the specific properties of this value.
+func (v TimeValue) Compare(other ValuePrimitive) int {
+	if otherTime, ok := other.(TimeValue); ok {
+		vVal := v.ToInt64Value()
+		otherVal := otherTime.ToInt64Value()
+		if vVal < otherVal {
+			return -1
+		} else if vVal > otherVal {
+			return 1
+		}
+		return 0
+	}
+	return v.StringValue.Compare(other)
+}
+
 // MySQLString implements the Value interface.
 func (v TimeValue) MySQLString() string {
 	return v.String()
@@ -117,6 +133,16 @@ func (v TimeValue) MySQLString() string {
 
 // SQLiteString implements the Value interface.
 func (v TimeValue) SQLiteString() string {
+	return v.ToInt64Value().String()
+}
+
+// CSVString implements the interface Value.
+func (v TimeValue) CSVString() string {
+	return v.StringTerminating(34)
+}
+
+// ToInt64Value returns this value as an Int64Value.
+func (v TimeValue) ToInt64Value() Int64Value {
 	divisions := strings.Split(string(v.StringValue), ":")
 	negativeMult := int64(1)
 	if divisions[0][0] == '-' {
@@ -135,5 +161,5 @@ func (v TimeValue) SQLiteString() string {
 	for i := 0; i < len(divisions[2]); i++ {
 		second = (second * 10) + int64(divisions[2][i]-'0')
 	}
-	return Int64Value(negativeMult * ((hour * 3600) + (minute * 60) + second)).String()
+	return Int64Value(negativeMult * ((hour * 3600) + (minute * 60) + second))
 }

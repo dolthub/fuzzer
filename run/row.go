@@ -99,6 +99,15 @@ func (r Row) SQLiteString() string {
 	return strings.Join(vals, ",")
 }
 
+// CSVString returns the row as a comma-separated string. Intended for CSV usage.
+func (r Row) CSVString() string {
+	vals := make([]string, len(r.Values))
+	for i := 0; i < len(vals); i++ {
+		vals[i] = r.Values[i].CSVString()
+	}
+	return strings.Join(vals, ",")
+}
+
 // Equals returns whether the given row is equivalent to the calling row.
 func (r Row) Equals(otherRow Row) bool {
 	if len(r.Values) != len(otherRow.Values) {

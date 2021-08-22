@@ -129,3 +129,8 @@ func (v TinytextValue) MySQLString() string {
 func (v TinytextValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v TinytextValue) CSVString() string {
+	return v.StringTerminating(34)
+}

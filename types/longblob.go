@@ -117,3 +117,8 @@ func (v LongblobValue) MySQLString() string {
 func (v LongblobValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v LongblobValue) CSVString() string {
+	return v.StringTerminating(34)
+}

@@ -117,3 +117,8 @@ func (v VarbinaryValue) MySQLString() string {
 func (v VarbinaryValue) SQLiteString() string {
 	return v.String()
 }
+
+// CSVString implements the interface Value.
+func (v VarbinaryValue) CSVString() string {
+	return v.StringTerminating(34)
+}
