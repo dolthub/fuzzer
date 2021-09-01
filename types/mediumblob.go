@@ -38,11 +38,7 @@ func (m *Mediumblob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (m *Mediumblob) Instance() (TypeInstance, error) {
-	charLength, err := m.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-	return &MediumblobInstance{ranges.NewInt([]int64{0, charLength})}, nil
+	return &MediumblobInstance{m.Length}, nil
 }
 
 // MediumblobInstance is the TypeInstance of Mediumblob.

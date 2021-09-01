@@ -41,10 +41,6 @@ func (l *Longtext) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (l *Longtext) Instance() (TypeInstance, error) {
-	charLength, err := l.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
 	colPos, err := rand.Uint64()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -54,7 +50,7 @@ func (l *Longtext) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	return &LongtextInstance{ranges.NewInt([]int64{1, charLength}), collation}, nil
+	return &LongtextInstance{l.Length, collation}, nil
 }
 
 // LongtextInstance is the TypeInstance of Longtext.

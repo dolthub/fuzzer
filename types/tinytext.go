@@ -42,10 +42,6 @@ func (t *Tinytext) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (t *Tinytext) Instance() (TypeInstance, error) {
-	charLength, err := t.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
 	colPos, err := rand.Uint64()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -55,8 +51,8 @@ func (t *Tinytext) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength = utils.MinInt64(charLength, 255/collation.CharSet.MaxLength())
-	return &TinytextInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
+	charLength := utils.MinInt64(t.Length.Upperbound, 255/collation.CharSet.MaxLength())
+	return &TinytextInstance{ranges.NewInt([]int64{t.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // TinytextInstance is the TypeInstance of Tinytext.

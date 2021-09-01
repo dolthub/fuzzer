@@ -42,10 +42,6 @@ func (m *Mediumtext) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (m *Mediumtext) Instance() (TypeInstance, error) {
-	charLength, err := m.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
 	colPos, err := rand.Uint64()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -55,8 +51,8 @@ func (m *Mediumtext) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength = utils.MinInt64(charLength, 16777215/collation.CharSet.MaxLength())
-	return &MediumtextInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
+	charLength := utils.MinInt64(m.Length.Upperbound, 16777215/collation.CharSet.MaxLength())
+	return &MediumtextInstance{ranges.NewInt([]int64{m.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // MediumtextInstance is the TypeInstance of Mediumtext.

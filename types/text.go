@@ -42,10 +42,6 @@ func (t *Text) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (t *Text) Instance() (TypeInstance, error) {
-	charLength, err := t.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
 	colPos, err := rand.Uint64()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -55,8 +51,8 @@ func (t *Text) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength = utils.MinInt64(charLength, 65535/collation.CharSet.MaxLength())
-	return &TextInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
+	charLength := utils.MinInt64(t.Length.Upperbound, 65535/collation.CharSet.MaxLength())
+	return &TextInstance{ranges.NewInt([]int64{t.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // TextInstance is the TypeInstance of Text.

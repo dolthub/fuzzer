@@ -38,11 +38,7 @@ func (l *Longblob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (l *Longblob) Instance() (TypeInstance, error) {
-	charLength, err := l.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-	return &LongblobInstance{ranges.NewInt([]int64{0, charLength})}, nil
+	return &LongblobInstance{l.Length}, nil
 }
 
 // LongblobInstance is the TypeInstance of Longblob.

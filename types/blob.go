@@ -38,11 +38,7 @@ func (b *Blob) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (b *Blob) Instance() (TypeInstance, error) {
-	charLength, err := b.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-	return &BlobInstance{ranges.NewInt([]int64{0, charLength})}, nil
+	return &BlobInstance{b.Length}, nil
 }
 
 // BlobInstance is the TypeInstance of Blob.

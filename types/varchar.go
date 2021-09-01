@@ -42,10 +42,6 @@ func (v *Varchar) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (v *Varchar) Instance() (TypeInstance, error) {
-	charLength, err := v.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
 	colPos, err := rand.Uint64()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -55,8 +51,8 @@ func (v *Varchar) Instance() (TypeInstance, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength = utils.MinInt64(charLength, 65535/collation.CharSet.MaxLength())
-	return &VarcharInstance{ranges.NewInt([]int64{0, charLength}), collation}, nil
+	charLength := utils.MinInt64(v.Length.Upperbound, 65535/collation.CharSet.MaxLength())
+	return &VarcharInstance{ranges.NewInt([]int64{v.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // VarcharInstance is the TypeInstance of Varchar.

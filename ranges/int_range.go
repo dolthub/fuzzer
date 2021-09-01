@@ -15,6 +15,8 @@
 package ranges
 
 import (
+	"math"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
 	"github.com/dolthub/fuzzer/utils"
@@ -22,16 +24,22 @@ import (
 
 // Int represents a range between two int64 values.
 type Int struct {
-	Lowerbound int64
-	Upperbound int64
+	Lowerbound  int64
+	Upperbound  int64
+	isFullRange bool
 }
 
 // NewInt converts an int64 slice into an Int. Does not verify that the array has only two values.
 func NewInt(r []int64) Int {
-	return Int{
-		Lowerbound: r[0],
-		Upperbound: r[1],
+	intRange := Int{
+		Lowerbound:  r[0],
+		Upperbound:  r[1],
+		isFullRange: false,
 	}
+	if uint64(math.MaxUint64) == uint64(intRange.Upperbound - intRange.Lowerbound) {
+		intRange.isFullRange = true
+	}
+	return intRange
 }
 
 // NewIntCollection converts a slice of int64 slices into an []Int. Does not verify that the collection is valid.
@@ -57,7 +65,10 @@ func (r *Int) RandomValue() (int64, error) {
 	if err != nil {
 		return 0, errors.Wrap(err)
 	}
-	return int64(v%uint64(utils.AbsInt64(r.Upperbound-r.Lowerbound))) + r.Lowerbound, nil
+	if r.isFullRange {
+		return int64(v), nil
+	}
+	return int64(v%uint64(utils.AbsInt64(r.Upperbound-r.Lowerbound)+1)) + r.Lowerbound, nil
 }
 
 // RandomValueRestrictUpper returns a random value between the inclusive bounds of the range. If the upper bound
@@ -77,7 +88,10 @@ func (r *Int) RandomValueRestrictUpper(upperRestriction int64) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrap(err)
 	}
-	return int64(v%uint64(utils.AbsInt64(upperbound-lowerbound))) + lowerbound, nil
+	if uint64(math.MaxUint64) == uint64(upperbound - lowerbound) {
+		return int64(v), nil
+	}
+	return int64(v%uint64(utils.AbsInt64(upperbound-lowerbound)+1)) + lowerbound, nil
 }
 
 // RandomValueExpandLower returns a random value between the inclusive bounds of the range. If the expanded lower bound

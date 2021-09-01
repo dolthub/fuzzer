@@ -38,11 +38,7 @@ func (v *Varbinary) GetOccurrenceRate() (int64, error) {
 
 // Instance implements the Type interface.
 func (v *Varbinary) Instance() (TypeInstance, error) {
-	charLength, err := v.Length.RandomValue()
-	if err != nil {
-		return nil, errors.Wrap(err)
-	}
-	return &VarbinaryInstance{ranges.NewInt([]int64{0, charLength})}, nil
+	return &VarbinaryInstance{v.Length}, nil
 }
 
 // VarbinaryInstance is the TypeInstance of Varbinary.
