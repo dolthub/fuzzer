@@ -76,6 +76,8 @@ func convertConfigBase(cBase *configBase) (*Base, error) {
 	base.Options.Logging = cBase.Options.Logging
 	base.Options.DeleteSuccesses = cBase.Options.DeleteSuccesses
 	base.Options.Port = int64(cBase.Options.Port)
+	base.Options.ZipInternalData = cBase.Options.ZipInternalData
+	base.Options.DeleteAfterZip = cBase.Options.DeleteAfterZip
 
 	// Types.Parameters
 	if err := cBase.Types.Parameters.Normalize(); err != nil {

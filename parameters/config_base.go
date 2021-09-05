@@ -252,6 +252,8 @@ type configOptions struct {
 	Logging             bool   `json:"Logging"`
 	DeleteSuccesses     bool   `json:"Delete_Successful_Runs"`
 	Port                uint64 `json:"Port"`
+	ZipInternalData     bool   `json:"Zip_Internal_Data"`
+	DeleteAfterZip      bool   `json:"Delete_After_Zip"`
 }
 
 // Validate checks if the read values are valid.

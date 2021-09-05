@@ -36,7 +36,7 @@ func NewInt(r []int64) Int {
 		Upperbound:  r[1],
 		isFullRange: false,
 	}
-	if uint64(math.MaxUint64) == uint64(intRange.Upperbound - intRange.Lowerbound) {
+	if uint64(math.MaxUint64) == uint64(intRange.Upperbound-intRange.Lowerbound) {
 		intRange.isFullRange = true
 	}
 	return intRange
@@ -88,7 +88,7 @@ func (r *Int) RandomValueRestrictUpper(upperRestriction int64) (int64, error) {
 	if err != nil {
 		return 0, errors.Wrap(err)
 	}
-	if uint64(math.MaxUint64) == uint64(upperbound - lowerbound) {
+	if uint64(math.MaxUint64) == uint64(upperbound-lowerbound) {
 		return int64(v), nil
 	}
 	return int64(v%uint64(utils.AbsInt64(upperbound-lowerbound)+1)) + lowerbound, nil

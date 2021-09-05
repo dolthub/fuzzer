@@ -27,6 +27,7 @@ import (
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/run"
 	"github.com/dolthub/fuzzer/types"
+	"github.com/dolthub/fuzzer/utils"
 )
 
 // Merge handles merge testing.
@@ -615,23 +616,24 @@ func (mc mergeConflict) ToRow(table *run.Table) run.Row {
 // Export writes all four internal tables (base, ours, theirs, merged) involved in the merge, the conflicts, and a shell
 // script to set up and import all the data into a Dolt instance.
 func (mtc mergeTableWithConflicts) Export(c *run.Cycle) (err error) {
-	err = os.Mkdir(c.Planner.Base.Arguments.RepoWorkingPath+c.Name+"/internal_data", 0777)
+	internalDataPath := c.Planner.Base.Arguments.RepoWorkingPath + c.Name + "/internal_data"
+	err = os.Mkdir(internalDataPath, 0777)
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	err = mtc.final.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/merged_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	err = mtc.final.Data.ExportToCSV(fmt.Sprintf("%s/merged_%s.csv", internalDataPath, mtc.final.Name))
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	err = mtc.ours.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/our_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	err = mtc.ours.Data.ExportToCSV(fmt.Sprintf("%s/our_%s.csv", internalDataPath, mtc.final.Name))
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	err = mtc.theirs.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/their_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	err = mtc.theirs.Data.ExportToCSV(fmt.Sprintf("%s/their_%s.csv", internalDataPath, mtc.final.Name))
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	err = mtc.base.Data.ExportToCSV(fmt.Sprintf("%s%s/internal_data/base_%s.csv", c.Planner.Base.Arguments.RepoWorkingPath, c.Name, mtc.final.Name))
+	err = mtc.base.Data.ExportToCSV(fmt.Sprintf("%s/base_%s.csv", internalDataPath, mtc.final.Name))
 	if err != nil {
 		return errors.Wrap(err)
 	}
@@ -642,6 +644,10 @@ func (mtc mergeTableWithConflicts) Export(c *run.Cycle) (err error) {
 	err = mtc.exportShellSetup(c)
 	if err != nil {
 		return errors.Wrap(err)
+	}
+
+	if c.Planner.Base.Options.ZipInternalData {
+		return utils.ZipDirectory(internalDataPath+"/", internalDataPath+".zip", c.Planner.Base.Options.DeleteAfterZip)
 	}
 	return nil
 }
