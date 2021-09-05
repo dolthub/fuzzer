@@ -57,8 +57,8 @@ func NewMasterBranch(c *Cycle) (*Branch, error) {
 	}, nil
 }
 
-// NewBranch returns a new branch. Just as in dolt, the new branch is created based on the contents of the branch it is
-// branching from.
+// NewBranch returns a new branch with a unique name. Just as in dolt, the new branch is created based on the contents
+// of the branch it is branching from.
 func (b *Branch) NewBranch(c *Cycle) (*Branch, error) {
 	var branchName string
 	var err error
@@ -74,9 +74,18 @@ func (b *Branch) NewBranch(c *Cycle) (*Branch, error) {
 			return nil, errors.New("10 million consecutive failed regexes on branch name, aborting cycle")
 		}
 	}
+	return b.NewCustomBranch(c, branchName)
+}
+
+// NewCustomBranch returns a new branch with the given name. Just as in dolt, the new branch is created based on the
+// contents of the branch it is branching from.
+func (b *Branch) NewCustomBranch(c *Cycle, branchName string) (*Branch, error) {
+	if _, ok := c.usedNames[branchName]; ok {
+		return nil, errors.New(fmt.Sprintf("attempted to create branch with name '%s' but it already exists", branchName))
+	}
 	c.usedNames[branchName] = struct{}{}
 
-	_, err = c.CliQuery("branch", branchName)
+	_, err := c.CliQuery("branch", branchName)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}

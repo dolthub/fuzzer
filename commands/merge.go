@@ -171,7 +171,11 @@ func (m *Merge) Run(c *run.Cycle) error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	_, err = c.CliQuery("checkout", "-b", combination.UniqueBranchName())
+	_, err = c.GetCurrentBranch().NewCustomBranch(c, combination.UniqueBranchName())
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	err = c.SwitchCurrentBranch(combination.UniqueBranchName())
 	if err != nil {
 		return errors.Wrap(err)
 	}
