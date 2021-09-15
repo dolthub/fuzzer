@@ -619,9 +619,9 @@ func (mc mergeConflict) ToRow(table *run.Table) run.Row {
 
 // Export writes all four internal tables (base, ours, theirs, merged) involved in the merge, the conflicts, and a shell
 // script to set up and import all the data into a Dolt instance.
-func (mtc mergeTableWithConflicts) Export(c *run.Cycle) (err error) {
+func (mtc mergeTableWithConflicts) Export(c *run.Cycle) error {
 	internalDataPath := c.Planner.Base.Arguments.RepoWorkingPath + c.Name + "/internal_data"
-	err = os.Mkdir(internalDataPath, 0777)
+	err := os.Mkdir(internalDataPath, 0777)
 	if err != nil {
 		return errors.Wrap(err)
 	}

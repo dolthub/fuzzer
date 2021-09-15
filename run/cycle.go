@@ -146,6 +146,11 @@ func (c *Cycle) Run() (err error) {
 				}()
 				_, _ = errFile.WriteString(fmt.Sprintf("%+v", err))
 			}()
+			if errors.ShouldIgnore(err) {
+				moveRepo = false
+				_ = os.Chdir(c.Planner.Base.Arguments.RepoWorkingPath)
+				_ = file.RemoveAll(c.Planner.Base.Arguments.RepoWorkingPath + c.Name)
+			}
 		} else {
 			cErr := c.Logger.WriteLine(LogType_INFO,
 				fmt.Sprintf("Cycle finished successfully: %s", time.Now().Format("2006-01-02 15:04:05")))
@@ -162,7 +167,7 @@ func (c *Cycle) Run() (err error) {
 				if err == nil && cErr != nil {
 					err = errors.Wrap(cErr)
 				}
-				cErr = os.RemoveAll(c.Planner.Base.Arguments.RepoWorkingPath + c.Name)
+				cErr = file.RemoveAll(c.Planner.Base.Arguments.RepoWorkingPath + c.Name)
 				if err == nil && cErr != nil {
 					err = errors.Wrap(cErr)
 				}

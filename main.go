@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/dolthub/fuzzer/errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -81,7 +82,7 @@ func main() {
 	base.Arguments.ConfigPath = configPath
 	base.Arguments.NumOfCycles = -1
 	if readParam, ok := apr.GetInt(cyclesParam); ok {
-		base.Arguments.NumOfCycles = readParam
+		base.Arguments.NumOfCycles = int64(readParam)
 	}
 	base.Arguments.Timeout = 0
 	if readParam, ok := apr.GetValue(timeoutParam); ok {
@@ -117,10 +118,11 @@ func main() {
 		base.Arguments.MetricsPath = expandPath(base.Arguments.MetricsPath)
 	}
 
-	cycleCount := 0
-	failures := 0
+	i := int64(0)
+	cycleCount := int64(0)
+	failures := int64(0)
 	startTime := time.Now()
-	for i := 0; (base.Arguments.NumOfCycles < 0 && time.Since(startTime) < base.Arguments.Timeout) || i < base.Arguments.NumOfCycles; i++ {
+	for ; (base.Arguments.NumOfCycles < 0 && time.Since(startTime) < base.Arguments.Timeout) || i < base.Arguments.NumOfCycles; i++ {
 		cycle, err := planner.NewCycle()
 		if err != nil {
 			cli.PrintErrf(color.RedString("%+v\n", err))
@@ -139,10 +141,16 @@ func main() {
 				}
 			}()
 			if err = cycle.Run(); err != nil {
-				cli.PrintErrf(color.RedString("%+v\n", err))
-				failures++
-				if base.Arguments.FirstError {
-					base.Arguments.NumOfCycles = 1
+				// If we're ignoring this cycle, then we should undo the cycle count and progress towards num of cycles run.
+				if errors.ShouldIgnore(err) {
+					cycleCount--
+					i--
+				} else {
+					cli.PrintErrf(color.RedString("%+v\n", err))
+					failures++
+					if base.Arguments.FirstError {
+						base.Arguments.NumOfCycles = 1
+					}
 				}
 			}
 		}()

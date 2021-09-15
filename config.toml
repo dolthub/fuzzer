@@ -39,7 +39,7 @@ Enforce_Rows_Lower_Bound_on_Master_Only = false # If enabled, then Amounts->Rows
 Logging = true
 Delete_Successful_Runs = true
 Port = 3307
-Zip_Internal_Data = true # If false, when internal data is written during an error, it will be to a folder rather than a ZIP archive
+Zip_Internal_Data = true # If true, creates a ZIP archive out of the contents of the internal data folder
 Delete_After_Zip = true # If true, deletes the original contents that were added to the ZIP archive
 
 [Types.Parameters]

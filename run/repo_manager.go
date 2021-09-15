@@ -17,6 +17,7 @@ package run
 import (
 	"fmt"
 	"math"
+	"os"
 	"time"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -225,57 +226,75 @@ func (m *RepositoryManager) ValidateRows(c *Cycle) error {
 	}
 
 	for _, branchName := range c.GetBranchNames() {
-		err = c.SwitchCurrentBranch(branchName)
-		if err != nil {
-			return errors.Wrap(err)
-		}
-		for _, table := range c.GetCurrentBranch().GetWorkingSet().Tables {
-			// Using a function here to make use of the defer
-			err = (func() error {
-				internalCursor, err := table.Data.GetRowCursor()
+		// Using a function here to make use of the defer
+		err = func() (err error) {
+			err = c.SwitchCurrentBranch(branchName)
+			if err != nil {
+				return errors.Wrap(err)
+			}
+			currentCommitTables := c.GetCurrentBranch().GetWorkingSet().Tables
+			// If we encounter an error then we should export all of our internal data to compare against
+			defer func() {
 				if err != nil {
-					return errors.Wrap(err)
+					fErr := m.exportTableData(c, currentCommitTables...)
+					if fErr != nil {
+						err = errors.New(fmt.Sprintf("Error 1: %s\n\nError 2: %s", err.Error(), fErr.Error()))
+					}
 				}
-				defer internalCursor.Close()
-				doltCursor, err := table.GetDoltCursor(c)
-				if err != nil {
-					return errors.Wrap(err)
-				}
-				defer func() {
-					_ = doltCursor.Close()
-				}()
+			}()
 
-				var iRow Row
-				var ok bool
-				for iRow, ok, err = internalCursor.NextRow(); ok && err == nil; iRow, ok, err = internalCursor.NextRow() {
-					dRow, ok, err := doltCursor.NextRow()
-					if !ok {
-						return errors.New(fmt.Sprintf("On table `%s`, internal data contains more rows than Dolt", table.Name))
+			for _, table := range currentCommitTables {
+				// Using a function here to make use of the defer
+				err = (func() error {
+					internalCursor, err := table.Data.GetRowCursor()
+					if err != nil {
+						return errors.Wrap(err)
+					}
+					defer internalCursor.Close()
+					doltCursor, err := table.GetDoltCursor(c)
+					if err != nil {
+						return errors.Wrap(err)
+					}
+					defer func() {
+						_ = doltCursor.Close()
+					}()
+
+					var iRow Row
+					var ok bool
+					for iRow, ok, err = internalCursor.NextRow(); ok && err == nil; iRow, ok, err = internalCursor.NextRow() {
+						dRow, ok, err := doltCursor.NextRow()
+						if !ok {
+							return errors.New(fmt.Sprintf("On table `%s`, internal data contains more rows than Dolt", table.Name))
+						}
+						if err != nil {
+							return errors.Wrap(err)
+						}
+						if !iRow.Equals(dRow) {
+							return errors.New(fmt.Sprintf("On table `%s`, internal data contains [%s]\nDolt contains [%s]",
+								table.Name, iRow.MySQLString(), dRow.MySQLString()))
+						}
 					}
 					if err != nil {
 						return errors.Wrap(err)
 					}
-					if !iRow.Equals(dRow) {
-						return errors.New(fmt.Sprintf("On table `%s`, internal data contains [%s]\nDolt contains [%s]",
-							table.Name, iRow.MySQLString(), dRow.MySQLString()))
-					}
-				}
-				if err != nil {
-					return errors.Wrap(err)
-				}
 
-				_, ok, err = doltCursor.NextRow()
-				if ok {
-					return errors.New(fmt.Sprintf("On table `%s`, Dolt contains more rows than internal data", table.Name))
-				}
+					_, ok, err = doltCursor.NextRow()
+					if ok {
+						return errors.New(fmt.Sprintf("On table `%s`, Dolt contains more rows than internal data", table.Name))
+					}
+					if err != nil {
+						return errors.Wrap(err)
+					}
+					return nil
+				})()
 				if err != nil {
 					return errors.Wrap(err)
 				}
-				return nil
-			})()
-			if err != nil {
-				return errors.Wrap(err)
 			}
+			return nil
+		}()
+		if err != nil {
+			return errors.Wrap(err)
 		}
 	}
 
@@ -284,6 +303,25 @@ func (m *RepositoryManager) ValidateRows(c *Cycle) error {
 		Cycle: c,
 	}); err != nil {
 		return errors.Wrap(err)
+	}
+	return nil
+}
+
+// exportTableData exports the data for each given table.
+func (m *RepositoryManager) exportTableData(c *Cycle, tables ...*Table) error {
+	internalDataPath := c.Planner.Base.Arguments.RepoWorkingPath + c.Name + "/internal_data"
+	err := os.Mkdir(internalDataPath, 0777)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+	for _, table := range tables {
+		err = table.Data.ExportToCSV(fmt.Sprintf("%s/%s.csv", internalDataPath, table.Name))
+		if err != nil {
+			return errors.Wrap(err)
+		}
+	}
+	if c.Planner.Base.Options.ZipInternalData {
+		return utils.ZipDirectory(internalDataPath+"/", internalDataPath+".zip", c.Planner.Base.Options.DeleteAfterZip)
 	}
 	return nil
 }

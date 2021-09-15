@@ -28,6 +28,7 @@ type Error struct {
 	errStr     string
 	nestedErr  error
 	stackTrace errors.StackTrace
+	ignored    bool
 }
 
 var _ error = Error{}
@@ -66,11 +67,26 @@ func (e Error) Format(s fmt.State, verb rune) {
 	}
 }
 
+// Ignorable sets the error to be ignored as far as a cycle is concerned. That is, if an ignorable error propagates all
+// the way to the main function that controls the number of cycles that are to be run, then the cycle that returned this
+// error will essentially be skipped from the perspective of metrics and the number of cycles to run. Duration-based
+// limits will still apply, meaning that it's possible for zero cycles to report having run. If any nested error is
+// ignorable, then all encapsulating errors are also ignorable.
+func (e Error) Ignorable() Error {
+	return Error{
+		errStr:     e.errStr,
+		nestedErr:  e.nestedErr,
+		stackTrace: e.stackTrace,
+		ignored:    true,
+	}
+}
+
 // New returns a new Error with the given string as the error message.
 func New(errStr string) Error {
 	return Error{
 		errStr:     errStr,
 		stackTrace: stackTrace(1),
+		ignored:    false,
 	}
 }
 
@@ -79,12 +95,31 @@ func Wrap(err error) Error {
 	if _, ok := err.(Error); ok {
 		return Error{
 			nestedErr: err,
+			ignored:   false,
 		}
 	}
 	return Error{
 		nestedErr:  err,
 		stackTrace: stackTrace(1),
+		ignored:    false,
 	}
+}
+
+// ShouldIgnore returns whether the given error should be ignored.
+func ShouldIgnore(err error) bool {
+	fuzzerErr, ok := err.(Error)
+	if !ok {
+		return false
+	}
+	for true {
+		if fuzzerErr.ignored {
+			return true
+		}
+		if fuzzerErr, ok = fuzzerErr.nestedErr.(Error); !ok {
+			break
+		}
+	}
+	return false
 }
 
 // stackTrace returns the current stack trace, skipping the number of frames given.

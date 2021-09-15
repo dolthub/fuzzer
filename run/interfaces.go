@@ -150,7 +150,7 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 	for exitLoop, timeout := false, time.After(5*time.Second); !exitLoop; {
 		select {
 		case <-timeout:
-			return errors.New("unable to connect to dolt sql-server")
+			return errors.New("unable to connect to dolt sql-server").Ignorable()
 		default:
 			if doltSqlServer.Process != nil {
 				exitLoop = true
@@ -167,7 +167,7 @@ func (c *SqlServer) ProvideInterface(caller func(func(string) error) error) (err
 	for timeout := time.After(5 * time.Second); conn.Ping() != nil; {
 		select {
 		case <-timeout:
-			return errors.New("unable to connect to dolt sql-server")
+			return errors.New("unable to connect to dolt sql-server").Ignorable()
 		default:
 		}
 	}
@@ -212,7 +212,7 @@ func (c *SqlServer) GetConnection() (*dbr.Connection, *os.Process, *bytes.Buffer
 	for exitLoop, timeout := false, time.After(5*time.Second); !exitLoop; {
 		select {
 		case <-timeout:
-			return nil, nil, nil, errors.New("unable to connect to dolt sql-server")
+			return nil, nil, nil, errors.New("unable to connect to dolt sql-server").Ignorable()
 		default:
 			if doltSqlServer.Process != nil {
 				exitLoop = true
@@ -229,7 +229,7 @@ func (c *SqlServer) GetConnection() (*dbr.Connection, *os.Process, *bytes.Buffer
 	for timeout := time.After(5 * time.Second); conn.Ping() != nil; {
 		select {
 		case <-timeout:
-			return nil, nil, nil, errors.New("unable to connect to dolt sql-server")
+			return nil, nil, nil, errors.New("unable to connect to dolt sql-server").Ignorable()
 		default:
 		}
 	}
