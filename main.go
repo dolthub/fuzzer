@@ -16,7 +16,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/dolthub/fuzzer/errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -28,6 +27,7 @@ import (
 	"github.com/fatih/color"
 
 	"github.com/dolthub/fuzzer/commands"
+	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/parameters"
 	"github.com/dolthub/fuzzer/run"
 )
