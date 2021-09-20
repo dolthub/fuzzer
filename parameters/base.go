@@ -26,7 +26,6 @@ type Base struct {
 	InvalidNameRegexes    InvalidNameRegexes
 	Amounts               Amounts
 	StatementDistribution StatementDistribution
-	InterfaceDistribution InterfaceDistribution
 	Options               Options
 	Types                 Types
 	Arguments             Arguments
@@ -59,14 +58,6 @@ type StatementDistribution struct {
 	Replace ranges.Int
 	Update  ranges.Int
 	Delete  ranges.Int
-}
-
-// InterfaceDistribution specifies the relative frequency of each interface in a cycle.
-type InterfaceDistribution struct {
-	CLIQuery         ranges.Int
-	CLIBatch         ranges.Int
-	SQLServer        ranges.Int
-	ConsecutiveRange ranges.Int
 }
 
 // Options are directives for all cycles.

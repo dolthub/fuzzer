@@ -19,6 +19,7 @@ import (
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/types"
+	"github.com/dolthub/fuzzer/utils"
 )
 
 // Row represents a row, similar to dolt, which consists of a key and value. Dolt uses tuples for the key and value,
@@ -183,4 +184,13 @@ func (r Row) Copy() Row {
 		Values:    vals,
 		PkColsLen: r.PkColsLen,
 	}
+}
+
+// Hash returns a string hash of the values of this row.
+func (r Row) Hash() utils.Hash {
+	hasher := utils.NewHasher()
+	for i := 0; i < len(r.Values); i++ {
+		hasher.Write(r.Values[i].ToBytes())
+	}
+	return hasher.Hash()
 }

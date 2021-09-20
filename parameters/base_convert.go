@@ -55,15 +55,6 @@ func convertConfigBase(cBase *configBase) (*Base, error) {
 	base.StatementDistribution.Update = ranges.NewInt(cBase.StatementDistribution.Update)
 	base.StatementDistribution.Delete = ranges.NewInt(cBase.StatementDistribution.Delete)
 
-	// Interface_Distribution
-	if err := cBase.InterfaceDistribution.Normalize(); err != nil {
-		return nil, errors.Wrap(err)
-	}
-	base.InterfaceDistribution.CLIQuery = ranges.NewInt(cBase.InterfaceDistribution.CLIQuery)
-	base.InterfaceDistribution.CLIBatch = ranges.NewInt(cBase.InterfaceDistribution.CLIBatch)
-	base.InterfaceDistribution.SQLServer = ranges.NewInt(cBase.InterfaceDistribution.SQLServer)
-	base.InterfaceDistribution.ConsecutiveRange = ranges.NewInt(cBase.InterfaceDistribution.ConsecutiveRange)
-
 	// Options
 	if err := cBase.Options.Validate(); err != nil {
 		return nil, errors.Wrap(err)

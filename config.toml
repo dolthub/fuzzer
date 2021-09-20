@@ -24,12 +24,6 @@ REPLACE = [1, 2]
 UPDATE = [1, 2]
 DELETE = [1]
 
-[Interface_Distribution]
-CLI_Query = [0]
-CLI_Batch = [0]
-SQL_Server = [1]
-Consecutive_Range = [50, 100]
-
 [Options]
 Dolt_Version = "" # May use the version or hash. The empty string represents the currently-installed Dolt.
 Auto_GC = false

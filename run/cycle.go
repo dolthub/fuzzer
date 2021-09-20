@@ -28,6 +28,7 @@ import (
 	"github.com/dolthub/fuzzer/blueprint"
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/ranges"
+	"github.com/dolthub/fuzzer/run/connection"
 )
 
 var env = os.Environ()
@@ -39,9 +40,7 @@ type Cycle struct {
 	Planner       *Planner
 	Blueprint     *blueprint.Blueprint
 	Logger        Logger
-	SqlServer     *SqlServer
 	statementDist *ranges.DistributionCenter
-	interfaceDist *ranges.DistributionCenter
 	typeDist      *ranges.DistributionCenter
 	nameRegexes   *nameRegexes
 	usedNames     map[string]struct{}
@@ -131,8 +130,10 @@ func (c *Cycle) Run() (err error) {
 			}
 		}
 		if err != nil {
+			now := time.Now()
+			since := now.Sub(c.Blueprint.CycleStart)
 			_ = c.Logger.WriteLine(LogType_INFO,
-				fmt.Sprintf("Cycle finished unsuccessfully: %s", time.Now().Format("2006-01-02 15:04:05")))
+				fmt.Sprintf("Cycle finished unsuccessfully: %s (%s)", now.Format("2006-01-02 15:04:05"), since.String()))
 			_ = c.Logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
 			_ = c.Logger.Close()
 			func() {
@@ -152,8 +153,10 @@ func (c *Cycle) Run() (err error) {
 				_ = file.RemoveAll(c.Planner.Base.Arguments.RepoWorkingPath + c.Name)
 			}
 		} else {
+			now := time.Now()
+			since := now.Sub(c.Blueprint.CycleStart)
 			cErr := c.Logger.WriteLine(LogType_INFO,
-				fmt.Sprintf("Cycle finished successfully: %s", time.Now().Format("2006-01-02 15:04:05")))
+				fmt.Sprintf("Cycle finished successfully: %s (%s)", now.Format("2006-01-02 15:04:05"), since.String()))
 			if cErr != nil {
 				err = errors.Wrap(cErr)
 			}
@@ -193,6 +196,10 @@ func (c *Cycle) Run() (err error) {
 					panic(rErr)
 				}
 			}
+		}
+		cErr := connection.CloseDoltConnections()
+		if err == nil && cErr != nil {
+			err = errors.Wrap(cErr)
 		}
 	}()
 
@@ -306,7 +313,7 @@ func (c *Cycle) QueueAction(f func(*Cycle) error) {
 	c.actionQueue <- f
 }
 
-// CliQuery is used to run dolt commands on the CLI.
+// CliQuery is used to run dolt commands on the CLI. Automatically closes any running servers before usage.
 func (c *Cycle) CliQuery(args ...string) (string, error) {
 	formattedArgs := make([]string, len(args))
 	copy(formattedArgs, args)
@@ -317,6 +324,10 @@ func (c *Cycle) CliQuery(args ...string) (string, error) {
 	}
 
 	err := c.Logger.WriteLine(LogType_CLI, strings.Join(append([]string{"dolt"}, formattedArgs...), " "))
+	if err != nil {
+		return "", errors.Wrap(err)
+	}
+	err = connection.CloseDoltConnections()
 	if err != nil {
 		return "", errors.Wrap(err)
 	}
@@ -336,16 +347,36 @@ func (c *Cycle) CliQuery(args ...string) (string, error) {
 	return strings.TrimSpace(stdOutBuffer.String()), nil
 }
 
-// UseInterface is used to run SQL queries. The cycle automatically manages which interface will be used (whether that
-// be the CLI query argument, batch mode, or the server). If the number of calls is known beforehand, then it allows
-// for the cycle to properly balance the distribution of used interfaces based on the number of commands executed.
-func (c *Cycle) UseInterface(expectedCalls int64, caller func(func(string) error) error) error {
-	chosenInterface, err := c.interfaceDist.Get(float64(expectedCalls))
+// SqlServer is used to run SQL statements on the server. If output of a statement is desired, then the connection
+// should be manually acquired using GetDoltConnection. This will reuse an existing server connection if one exists.
+// Additionally, this will call the pre- and post-SQL execution hooks.
+func (c *Cycle) SqlServer(statement string) error {
+	if err := c.Planner.Hooks.RunHook(Hook{
+		Type:   HookType_SqlStatementPreExecution,
+		Cycle:  c,
+		Param1: statement,
+	}); err != nil {
+		return errors.Wrap(err)
+	}
+
+	err := c.Logger.WriteLine(LogType_SQLS, statement)
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	err = chosenInterface.(Interface).ProvideInterface(caller)
+	dc, err := connection.GetDoltConnection(c.Planner.Base.Options.Port, c.Name)
 	if err != nil {
+		return errors.Wrap(err)
+	}
+	_, err = dc.Conn.Exec(statement)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+
+	if err = c.Planner.Hooks.RunHook(Hook{
+		Type:   HookType_SqlStatementPostExecution,
+		Cycle:  c,
+		Param1: statement,
+	}); err != nil {
 		return errors.Wrap(err)
 	}
 	return nil
@@ -380,22 +411,6 @@ func (c *Cycle) init() error {
 		}
 		c.Logger = &fileLogger{logFile}
 	}
-
-	sqlServer := &SqlServer{
-		r:      c.Planner.Base.InterfaceDistribution.SQLServer,
-		port:   c.Planner.Base.Options.Port,
-		dbName: dbName,
-		logger: c.Logger,
-	}
-	c.interfaceDist, err = ranges.NewDistributionCenter(
-		&CliQuery{c.Planner.Base.InterfaceDistribution.CLIQuery, c.Logger},
-		&CliBatch{c.Planner.Base.InterfaceDistribution.CLIBatch, c.Logger},
-		sqlServer,
-	)
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	c.SqlServer = sqlServer
 
 	err = c.Logger.WriteLine(LogType_INFO, fmt.Sprintf("Cycle started: %s", c.Blueprint.CycleStart.Format("2006-01-02 15:04:05")))
 	if err != nil {

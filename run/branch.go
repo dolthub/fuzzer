@@ -222,9 +222,7 @@ func (b *Branch) NewTable(c *Cycle) (*Table, error) {
 		Cycle:  c,
 		Param1: table,
 	}
-	return table, c.UseInterface(1, func(f func(string) error) error {
-		return f(table.CreateString(false, false))
-	})
+	return table, c.SqlServer(table.CreateString(false, false))
 }
 
 // Commit adds all of the changes from this branch to the staged set, and then commits those.

@@ -37,7 +37,6 @@ type configBase struct {
 	InvalidNameRegexes    configInvalidNameRegexes    `json:"Invalid_Name_Regexes"`
 	Amounts               configAmounts               `json:"Amounts"`
 	StatementDistribution configStatementDistribution `json:"Statement_Distribution"`
-	InterfaceDistribution configInterfaceDistribution `json:"Interface_Distribution"`
 	Options               configOptions               `json:"Options"`
 	Types                 configTypes                 `json:"Types"`
 }
@@ -192,52 +191,6 @@ func (c *configStatementDistribution) Normalize() error {
 	}
 	if !atLeastOneLowerbound {
 		return errors.New(fmt.Sprintf(errDistLowerbound, "Statement_Distribution"))
-	}
-	return nil
-}
-
-// configInterfaceDistribution represents the "Interface_Distribution" table in the config file.
-type configInterfaceDistribution struct {
-	CLIQuery         []int64 `json:"CLI_Query"`
-	CLIBatch         []int64 `json:"CLI_Batch"`
-	SQLServer        []int64 `json:"SQL_Server"`
-	ConsecutiveRange []int64 `json:"Consecutive_Range"`
-}
-
-// Normalize checks if the read values are valid, while normalizing all values to their expected forms.
-func (c *configInterfaceDistribution) Normalize() error {
-	var err error
-	atLeastOneLowerbound := false
-	c.CLIQuery, err = normalizeIntRange(c.CLIQuery, "Interface_Distribution.CLI_Query")
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	if c.CLIQuery[0] > 0 {
-		atLeastOneLowerbound = true
-	}
-	c.CLIBatch, err = normalizeIntRange(c.CLIBatch, "Interface_Distribution.CLI_Batch")
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	if c.CLIBatch[0] > 0 {
-		atLeastOneLowerbound = true
-	}
-	c.SQLServer, err = normalizeIntRange(c.SQLServer, "Interface_Distribution.SQL_Server")
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	if c.SQLServer[0] > 0 {
-		atLeastOneLowerbound = true
-	}
-	c.ConsecutiveRange, err = normalizeIntRange(c.ConsecutiveRange, "Interface_Distribution.Consecutive_Range")
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	if c.ConsecutiveRange[0] > 0 {
-		atLeastOneLowerbound = true
-	}
-	if !atLeastOneLowerbound {
-		return errors.New(fmt.Sprintf(errDistLowerbound, "Interface_Distribution"))
 	}
 	return nil
 }

@@ -19,6 +19,7 @@ import "github.com/dolthub/fuzzer/errors"
 // GCManager handles running GC commands throughout the cycle.
 type GCManager struct {
 	statementsSinceLastGC uint64
+	dataSizeSinceLastGC   uint64
 }
 
 var _ HookRegistrant = (*GCManager)(nil)
@@ -26,21 +27,24 @@ var _ HookRegistrant = (*GCManager)(nil)
 // Register implements the HookRegistrant interface.
 func (m *GCManager) Register(hooks *Hooks) {
 	hooks.CycleInitialized(m.Initialize)
-	hooks.SQLStatementBatchFinished(m.Counter)
+	hooks.SQLStatementPostExecution(m.Counter)
 	hooks.RepositoryFinished(m.Finish)
 }
 
 // Initialize resets the state of GCManager.
 func (m *GCManager) Initialize(c *Cycle) error {
 	m.statementsSinceLastGC = 0
+	m.dataSizeSinceLastGC = 0
 	return nil
 }
 
-// Counter counts the number of statements ran, and runs GC once a threshold has been crossed.
-func (m *GCManager) Counter(c *Cycle, table *Table) error {
-	m.statementsSinceLastGC += c.Blueprint.SQLStatementBatchSize
-	if m.statementsSinceLastGC > 150 {
+// Counter gets a rough measure of how much data has been written, and runs GC once a threshold has been crossed.
+func (m *GCManager) Counter(c *Cycle, statement string) error {
+	m.statementsSinceLastGC += 1
+	m.dataSizeSinceLastGC += uint64(len(statement))
+	if m.statementsSinceLastGC > 256*1024 || m.dataSizeSinceLastGC > 256*1024*1024 { // 256MB
 		m.statementsSinceLastGC = 0
+		m.dataSizeSinceLastGC = 0
 		if _, err := c.CliQuery("gc"); err != nil {
 			return errors.Wrap(err)
 		}
@@ -50,9 +54,11 @@ func (m *GCManager) Counter(c *Cycle, table *Table) error {
 
 // Finish runs GC once all of the data has been written to the repository.
 func (m *GCManager) Finish(c *Cycle) error {
-	if m.statementsSinceLastGC == 0 {
+	if m.statementsSinceLastGC == 0 && m.dataSizeSinceLastGC == 0 {
 		return nil
 	}
+	m.statementsSinceLastGC = 0
+	m.dataSizeSinceLastGC = 0
 	if _, err := c.CliQuery("gc"); err != nil {
 		return errors.Wrap(err)
 	}

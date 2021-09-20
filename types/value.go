@@ -17,6 +17,7 @@ package types
 import (
 	"database/sql/driver"
 	"fmt"
+	"reflect"
 	"strconv"
 	"unsafe"
 
@@ -36,6 +37,8 @@ type ValuePrimitive interface {
 	// String returns the underlying value as a string for insertion into a generic SQL file, e.g. string would include
 	// the quotes.
 	String() string
+	// ToBytes returns the ValuePrimitive as a byte slice.
+	ToBytes() []byte
 }
 
 // Value is a value that is returned from a TypeInstance. Each Value is specific to its returned type.
@@ -106,6 +109,11 @@ func (v NilValue) Compare(other ValuePrimitive) int {
 	return -1
 }
 
+// ToBytes implements the interface ValuePrimitive.
+func (v NilValue) ToBytes() []byte {
+	return []byte{0}
+}
+
 // Value implements the interface driver.Value.
 func (v NilValue) Value() (driver.Value, error) {
 	return nil, nil
@@ -141,6 +149,11 @@ func (v Int8Value) Compare(other ValuePrimitive) int {
 	default:
 		return -2
 	}
+}
+
+// ToBytes implements the interface ValuePrimitive.
+func (v Int8Value) ToBytes() []byte {
+	return []byte{byte(v)}
 }
 
 // Value implements the interface driver.Value.
@@ -180,6 +193,12 @@ func (v Int16Value) Compare(other ValuePrimitive) int {
 	}
 }
 
+// ToBytes implements the interface ValuePrimitive.
+func (v Int16Value) ToBytes() []byte {
+	u := uint16(v)
+	return []byte{byte(u), byte(u >> 8)}
+}
+
 // Value implements the interface driver.Value.
 func (v Int16Value) Value() (driver.Value, error) {
 	return int64(v), nil
@@ -215,6 +234,12 @@ func (v Int32Value) Compare(other ValuePrimitive) int {
 	default:
 		return -2
 	}
+}
+
+// ToBytes implements the interface ValuePrimitive.
+func (v Int32Value) ToBytes() []byte {
+	u := uint32(v)
+	return []byte{byte(u), byte(u >> 8), byte(u >> 16), byte(u >> 24)}
 }
 
 // Value implements the interface driver.Value.
@@ -254,6 +279,12 @@ func (v Int64Value) Compare(other ValuePrimitive) int {
 	}
 }
 
+// ToBytes implements the interface ValuePrimitive.
+func (v Int64Value) ToBytes() []byte {
+	u := uint64(v)
+	return []byte{byte(u), byte(u >> 8), byte(u >> 16), byte(u >> 24), byte(u >> 32), byte(u >> 40), byte(u >> 48), byte(u >> 56)}
+}
+
 // Value implements the interface driver.Value.
 func (v Int64Value) Value() (driver.Value, error) {
 	return int64(v), nil
@@ -289,6 +320,11 @@ func (v Uint8Value) Compare(other ValuePrimitive) int {
 	default:
 		return -2
 	}
+}
+
+// ToBytes implements the interface ValuePrimitive.
+func (v Uint8Value) ToBytes() []byte {
+	return []byte{byte(v)}
 }
 
 // Value implements the interface driver.Value.
@@ -328,6 +364,11 @@ func (v Uint16Value) Compare(other ValuePrimitive) int {
 	}
 }
 
+// ToBytes implements the interface ValuePrimitive.
+func (v Uint16Value) ToBytes() []byte {
+	return []byte{byte(v), byte(v >> 8)}
+}
+
 // Value implements the interface driver.Value.
 func (v Uint16Value) Value() (driver.Value, error) {
 	return uint64(v), nil
@@ -363,6 +404,11 @@ func (v Uint32Value) Compare(other ValuePrimitive) int {
 	default:
 		return -2
 	}
+}
+
+// ToBytes implements the interface ValuePrimitive.
+func (v Uint32Value) ToBytes() []byte {
+	return []byte{byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24)}
 }
 
 // Value implements the interface driver.Value.
@@ -417,6 +463,11 @@ func (v Uint64Value) Compare(other ValuePrimitive) int {
 	}
 }
 
+// ToBytes implements the interface ValuePrimitive.
+func (v Uint64Value) ToBytes() []byte {
+	return []byte{byte(v), byte(v >> 8), byte(v >> 16), byte(v >> 24), byte(v >> 32), byte(v >> 40), byte(v >> 48), byte(v >> 56)}
+}
+
 // Value implements the interface driver.Value.
 func (v Uint64Value) Value() (driver.Value, error) {
 	return uint64(v), nil
@@ -469,6 +520,12 @@ func (v Float32Value) Compare(other ValuePrimitive) int {
 	}
 }
 
+// ToBytes implements the interface ValuePrimitive.
+func (v Float32Value) ToBytes() []byte {
+	u := *(*uint32)(unsafe.Pointer(&v))
+	return []byte{byte(u), byte(u >> 8), byte(u >> 16), byte(u >> 24)}
+}
+
 // Value implements the interface driver.Value.
 func (v Float32Value) Value() (driver.Value, error) {
 	return float64(v), nil
@@ -504,6 +561,12 @@ func (v Float64Value) Compare(other ValuePrimitive) int {
 	default:
 		return -2
 	}
+}
+
+// ToBytes implements the interface ValuePrimitive.
+func (v Float64Value) ToBytes() []byte {
+	u := *(*uint64)(unsafe.Pointer(&v))
+	return []byte{byte(u), byte(u >> 8), byte(u >> 16), byte(u >> 24), byte(u >> 32), byte(u >> 40), byte(u >> 48), byte(u >> 56)}
 }
 
 // Value implements the interface driver.Value.
@@ -550,6 +613,11 @@ func (v StringValue) Compare(other ValuePrimitive) int {
 	default:
 		return -2
 	}
+}
+
+// ToBytes implements the interface ValuePrimitive.
+func (v StringValue) ToBytes() []byte {
+	return unsafe.Slice((*byte)(unsafe.Pointer((*reflect.StringHeader)(unsafe.Pointer(&v)).Data)), len(v))
 }
 
 // Value implements the interface driver.Value.

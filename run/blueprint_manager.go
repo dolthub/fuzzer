@@ -24,8 +24,7 @@ var _ HookRegistrant = (*BlueprintManager)(nil)
 // Register implements the HookRegistrant interface.
 func (m *BlueprintManager) Register(hooks *Hooks) {
 	hooks.CycleInitialized(m.InitializeBlueprint)
-	hooks.SQLStatementBatchStarted(m.SetBatchSize)
-	hooks.SQLStatementBatchFinished(m.UpdateStatementsExecuted)
+	hooks.SQLStatementPostExecution(m.UpdateStatementsExecuted)
 	hooks.BranchCreated(m.NewBranch)
 	hooks.TableCreated(m.NewTable)
 }
@@ -46,19 +45,9 @@ func (m *BlueprintManager) InitializeBlueprint(c *Cycle) error {
 	return nil
 }
 
-// SetBatchSize sets the SQLStatementBatchSize when a batch is started.
-func (m *BlueprintManager) SetBatchSize(c *Cycle, table *Table) error {
-	consecutiveStatements, err := c.Planner.Base.InterfaceDistribution.ConsecutiveRange.RandomValue()
-	if err != nil {
-		return errors.Wrap(err)
-	}
-	c.Blueprint.SQLStatementBatchSize = uint64(consecutiveStatements)
-	return nil
-}
-
-// UpdateStatementsExecuted sets the SQLStatementsExecuted when a batch has ended.
-func (m *BlueprintManager) UpdateStatementsExecuted(c *Cycle, table *Table) error {
-	c.Blueprint.SQLStatementsExecuted += c.Blueprint.SQLStatementBatchSize
+// UpdateStatementsExecuted sets the SQLStatementsExecuted when a statement has executed.
+func (m *BlueprintManager) UpdateStatementsExecuted(c *Cycle, statement string) error {
+	c.Blueprint.SQLStatementsExecuted += 1
 	return nil
 }
 

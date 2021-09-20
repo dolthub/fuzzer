@@ -15,17 +15,14 @@
 package run
 
 import (
-	"bytes"
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
 	"strings"
 	"sync"
 
-	"github.com/gocraft/dbr/v2"
-
 	"github.com/dolthub/fuzzer/errors"
+	"github.com/dolthub/fuzzer/run/connection"
 	"github.com/dolthub/fuzzer/types"
 )
 
@@ -41,11 +38,8 @@ type Table struct {
 
 // DoltDataCursor returns a Dolt repository's data, one row at a time.
 type DoltDataCursor struct {
-	conn     *dbr.Connection
 	rows     *sql.Rows
 	template Row
-	process  *os.Process
-	errBuf   *bytes.Buffer
 	once     *sync.Once
 }
 
@@ -137,9 +131,9 @@ func (t *Table) DoltTableHasConflicts(c *Cycle) (bool, error) {
 
 // GetDoltCursor returns a cursor over Dolt's stored table data.
 func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
-	conn, process, stdErrBuffer, err := c.SqlServer.GetConnection()
+	dc, err := connection.GetDoltConnection(c.Planner.Base.Options.Port, c.Name)
 	if err != nil {
-		return nil, errors.Wrap(err)
+		return nil, err
 	}
 	orderBy := ""
 	for i := 1; i <= len(t.PKCols); i++ {
@@ -149,16 +143,13 @@ func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
 			orderBy += fmt.Sprintf(", %d", i)
 		}
 	}
-	outRows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT * FROM `%s`%s;", t.Name, orderBy))
+	outRows, err := dc.Conn.QueryContext(context.Background(), fmt.Sprintf("SELECT * FROM `%s`%s;", t.Name, orderBy))
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
 	return &DoltDataCursor{
-		conn:     conn,
 		rows:     outRows,
 		template: t.Data.ConstructTemplateRow(),
-		process:  process,
-		errBuf:   stdErrBuffer,
 		once:     &sync.Once{},
 	}, nil
 }
@@ -166,7 +157,7 @@ func (t *Table) GetDoltCursor(c *Cycle) (*DoltDataCursor, error) {
 // GetDoltConflictsCursor returns a cursor over Dolt's conflicts for this table. This returns an error if there are no
 // conflicts to iterate over, therefore it is best to check for conflicts first using DoltTableHasConflicts.
 func (t *Table) GetDoltConflictsCursor(c *Cycle) (*DoltDataCursor, error) {
-	conn, process, stdErrBuffer, err := c.SqlServer.GetConnection()
+	dc, err := connection.GetDoltConnection(c.Planner.Base.Options.Port, c.Name)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -198,7 +189,7 @@ func (t *Table) GetDoltConflictsCursor(c *Cycle) (*DoltDataCursor, error) {
 			orderBy += fmt.Sprintf(",%d", i)
 		}
 	}
-	outRows, err := conn.QueryContext(context.Background(), fmt.Sprintf("SELECT %s FROM `dolt_conflicts_%s`%s;", colsToSelect[1:], t.Name, orderBy))
+	outRows, err := dc.Conn.QueryContext(context.Background(), fmt.Sprintf("SELECT %s FROM `dolt_conflicts_%s`%s;", colsToSelect[1:], t.Name, orderBy))
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -212,11 +203,8 @@ func (t *Table) GetDoltConflictsCursor(c *Cycle) (*DoltDataCursor, error) {
 		PkColsLen: 0,
 	}
 	return &DoltDataCursor{
-		conn:     conn,
 		rows:     outRows,
 		template: templateRow,
-		process:  process,
-		errBuf:   stdErrBuffer,
 		once:     &sync.Once{},
 	}, nil
 }
@@ -271,18 +259,8 @@ func (ddc *DoltDataCursor) Close() error {
 	var err error
 	ddc.once.Do(func() {
 		rErr := ddc.rows.Close()
-		cErr := ddc.conn.Close()
-		pErr := ddc.process.Kill()
 		if rErr != nil {
 			err = errors.Wrap(rErr)
-			return
-		}
-		if cErr != nil {
-			err = errors.Wrap(cErr)
-			return
-		}
-		if pErr != nil {
-			err = errors.Wrap(pErr)
 			return
 		}
 	})

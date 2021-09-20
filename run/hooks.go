@@ -48,8 +48,6 @@ const (
 	HookType_TableCreated              HookType = "TableCreated"
 	HookType_IndexCreated              HookType = "IndexCreated"
 	HookType_ForeignKeyCreated         HookType = "ForeignKeyCreated"
-	HookType_SqlStatementBatchStarted  HookType = "SqlStatementBatchStarted"
-	HookType_SqlStatementBatchFinished HookType = "SqlStatementBatchFinished"
 	HookType_SqlStatementPreExecution  HookType = "SqlStatementPreExecution"
 	HookType_SqlStatementPostExecution HookType = "SqlStatementPostExecution"
 )
@@ -66,8 +64,6 @@ type Hooks struct {
 	tableCreated              []func(c *Cycle, table *Table) error
 	indexCreated              []func(c *Cycle, table *Table, index *Index) error
 	foreignKeyCreated         []func(c *Cycle, commit *Commit, foreignKey *ForeignKey) error
-	sqlStatementBatchStarted  []func(c *Cycle, table *Table) error
-	sqlStatementBatchFinished []func(c *Cycle, table *Table) error
 	sqlStatementPreExecution  []func(c *Cycle, statement string) error
 	sqlStatementPostExecution []func(c *Cycle, statement string) error
 }
@@ -147,20 +143,6 @@ func (h *Hooks) RunHook(hook Hook) error {
 				return errors.Wrap(err)
 			}
 		}
-	case HookType_SqlStatementBatchStarted:
-		table := hook.Param1.(*Table)
-		for _, hookFunc := range h.sqlStatementBatchStarted {
-			if err := hookFunc(hook.Cycle, table); err != nil {
-				return errors.Wrap(err)
-			}
-		}
-	case HookType_SqlStatementBatchFinished:
-		table := hook.Param1.(*Table)
-		for _, hookFunc := range h.sqlStatementBatchFinished {
-			if err := hookFunc(hook.Cycle, table); err != nil {
-				return errors.Wrap(err)
-			}
-		}
 	case HookType_SqlStatementPreExecution:
 		statement := hook.Param1.(string)
 		for _, hookFunc := range h.sqlStatementPreExecution {
@@ -232,17 +214,6 @@ func (h *Hooks) IndexCreated(f func(c *Cycle, table *Table, index *Index) error)
 // ForeignKeyCreated is called when a foreign key has been created.
 func (h *Hooks) ForeignKeyCreated(f func(c *Cycle, commit *Commit, foreignKey *ForeignKey) error) {
 	h.foreignKeyCreated = append(h.foreignKeyCreated, f)
-}
-
-// SQLStatementBatchStarted is called when a batch of SQL statements are about to be ran. Modifying the
-// SQLStatementBatchSize will alter how many statements are run.
-func (h *Hooks) SQLStatementBatchStarted(f func(c *Cycle, table *Table) error) {
-	h.sqlStatementBatchStarted = append(h.sqlStatementBatchStarted, f)
-}
-
-// SQLStatementBatchFinished is called when a batch of SQL statements have finished executing (without errors).
-func (h *Hooks) SQLStatementBatchFinished(f func(c *Cycle, table *Table) error) {
-	h.sqlStatementBatchFinished = append(h.sqlStatementBatchFinished, f)
 }
 
 // SQLStatementPreExecution is called whenever a SQL statement is about to be executed.

@@ -28,7 +28,6 @@ import (
 // RepositoryManager handles the general repository generation commands throughout the cycle.
 type RepositoryManager struct {
 	clearedBranches   map[string]struct{}
-	lastBatchSize     uint64
 	tableProbability  uint64
 	branchProbability uint64
 }
@@ -44,7 +43,6 @@ func (m *RepositoryManager) Register(hooks *Hooks) {
 // Initialize resets the state of the repository manager.
 func (m *RepositoryManager) Initialize(c *Cycle) error {
 	m.clearedBranches = make(map[string]struct{})
-	m.lastBatchSize = 0
 	m.tableProbability = 0
 	m.branchProbability = 0
 	return nil
@@ -76,7 +74,7 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 		return errors.Wrap(err)
 	}
 	if currentBranch.Name == "master" && uint64(len(tables)) < c.Blueprint.TableCount &&
-		probabilityVal < m.tableProbability*m.lastBatchSize {
+		probabilityVal < m.tableProbability {
 		_, err := currentBranch.NewTable(c)
 		if err != nil {
 			return errors.Wrap(err)
@@ -84,7 +82,7 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 		c.QueueAction(m.MainLoop)
 		return nil
 	}
-	if uint64(len(branches)) < c.Blueprint.BranchCount && probabilityVal < m.branchProbability*m.lastBatchSize {
+	if uint64(len(branches)) < c.Blueprint.BranchCount && probabilityVal < m.branchProbability {
 		_, err = currentBranch.Commit(c, false)
 		if err != nil {
 			return errors.Wrap(err)
@@ -163,56 +161,20 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 		return nil
 	}
 
-	if err = c.Planner.Hooks.RunHook(Hook{
-		Type:   HookType_SqlStatementBatchStarted,
-		Cycle:  c,
-		Param1: table,
-	}); err != nil {
-		return errors.Wrap(err)
-	}
-	batchSize := int64(c.Blueprint.SQLStatementBatchSize)
-	err = c.UseInterface(batchSize, func(f func(string) error) error {
-		for i := int64(0); i < batchSize; i++ {
-			statement, err := c.statementDist.Get(1)
-			if err != nil {
-				return errors.Wrap(err)
-			}
-			statementStr, err := statement.(Statement).GenerateStatement(table)
-			if err != nil {
-				return errors.Wrap(err)
-			}
-
-			if err = c.Planner.Hooks.RunHook(Hook{
-				Type:   HookType_SqlStatementPreExecution,
-				Cycle:  c,
-				Param1: statementStr,
-			}); err != nil {
-				return errors.Wrap(err)
-			}
-			if err = f(statementStr); err != nil {
-				return errors.Wrap(err)
-			}
-			if err = c.Planner.Hooks.RunHook(Hook{
-				Type:   HookType_SqlStatementPostExecution,
-				Cycle:  c,
-				Param1: statementStr,
-			}); err != nil {
-				return errors.Wrap(err)
-			}
-		}
-		return nil
-	})
+	// Execute the next statement
+	statement, err := c.statementDist.Get(1)
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	m.lastBatchSize = uint64(batchSize)
-	if err = c.Planner.Hooks.RunHook(Hook{
-		Type:   HookType_SqlStatementBatchFinished,
-		Cycle:  c,
-		Param1: table,
-	}); err != nil {
+	statementStr, err := statement.(Statement).GenerateStatement(table)
+	if err != nil {
 		return errors.Wrap(err)
 	}
+	err = c.SqlServer(statementStr)
+	if err != nil {
+		return errors.Wrap(err)
+	}
+
 	c.QueueAction(m.MainLoop)
 	return nil
 }
