@@ -108,7 +108,7 @@ func newCycle(planner *Planner) (*Cycle, error) {
 		Planner:       planner,
 		Blueprint:     &blueprint.Blueprint{},
 		Logger:        &fakeLogger{},
-		usedNames:     map[string]struct{}{"master": {}},
+		usedNames:     map[string]struct{}{"main": {}},
 		statementDist: statementDist,
 		typeDist:      typeDist,
 		nameRegexes:   nameRegexes,
@@ -420,10 +420,10 @@ func (c *Cycle) init() error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	masterBranch, err := NewMasterBranch(c)
+	mainBranch, err := NewMainBranch(c)
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	c.branches = []*Branch{masterBranch}
+	c.branches = []*Branch{mainBranch}
 	return nil
 }

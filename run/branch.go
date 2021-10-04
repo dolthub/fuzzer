@@ -29,9 +29,9 @@ type Branch struct {
 	Commits []*Commit
 }
 
-// NewMasterBranch returns a new master branch. Fetches the hash of the initial commit, as the master branch is
+// NewMainBranch returns a new main branch. Fetches the hash of the initial commit, as the main branch is
 // automatically created on repo initialization, along with an "Initialize data repository" commit.
-func NewMasterBranch(c *Cycle) (*Branch, error) {
+func NewMainBranch(c *Cycle) (*Branch, error) {
 	result, err := c.CliQuery("log", "-n", "1")
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -52,7 +52,7 @@ func NewMasterBranch(c *Cycle) (*Branch, error) {
 		ForeignKeys: nil,
 	}
 	return &Branch{
-		Name:    "master",
+		Name:    "main",
 		Commits: []*Commit{initialCommit, workingSet},
 	}, nil
 }

@@ -22,7 +22,7 @@ type Blueprint struct {
 	CycleStart time.Time
 	// BranchCount is the number of branches that will be created for this repository.
 	BranchCount uint64
-	// TableCount is the number of tables that will be created on the master branch for this repository.
+	// TableCount is the number of tables that will be created on the main branch for this repository.
 	TableCount uint64
 	// TargetRowCount is the number of rows that each table of each branch is targeting. The first map is the branch name,
 	// while the second map is the table name.

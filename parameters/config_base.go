@@ -197,16 +197,16 @@ func (c *configStatementDistribution) Normalize() error {
 
 // configOptions represents the "Options" table in the config file.
 type configOptions struct {
-	DoltVersion         string `json:"Dolt_Version"`
-	AutoGC              bool   `json:"Auto_GC"`
-	ManualGC            bool   `json:"Manual_GC"`
-	IncludeReadme       bool   `json:"Include_README_Config"`
-	LowerRowsMasterOnly bool   `json:"Enforce_Rows_Lower_Bound_on_Master_Only"`
-	Logging             bool   `json:"Logging"`
-	DeleteSuccesses     bool   `json:"Delete_Successful_Runs"`
-	Port                uint64 `json:"Port"`
-	ZipInternalData     bool   `json:"Zip_Internal_Data"`
-	DeleteAfterZip      bool   `json:"Delete_After_Zip"`
+	DoltVersion       string `json:"Dolt_Version"`
+	AutoGC            bool   `json:"Auto_GC"`
+	ManualGC          bool   `json:"Manual_GC"`
+	IncludeReadme     bool   `json:"Include_README_Config"`
+	LowerRowsMainOnly bool   `json:"Enforce_Rows_Lower_Bound_on_Main_Only"`
+	Logging           bool   `json:"Logging"`
+	DeleteSuccesses   bool   `json:"Delete_Successful_Runs"`
+	Port              uint64 `json:"Port"`
+	ZipInternalData   bool   `json:"Zip_Internal_Data"`
+	DeleteAfterZip    bool   `json:"Delete_After_Zip"`
 }
 
 // Validate checks if the read values are valid.

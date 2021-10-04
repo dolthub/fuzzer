@@ -63,7 +63,7 @@ func convertConfigBase(cBase *configBase) (*Base, error) {
 	base.Options.AutoGC = cBase.Options.AutoGC
 	base.Options.ManualGC = cBase.Options.ManualGC
 	base.Options.IncludeReadme = cBase.Options.IncludeReadme
-	base.Options.LowerRowsMasterOnly = cBase.Options.LowerRowsMasterOnly
+	base.Options.LowerRowsMainOnly = cBase.Options.LowerRowsMainOnly
 	base.Options.Logging = cBase.Options.Logging
 	base.Options.DeleteSuccesses = cBase.Options.DeleteSuccesses
 	base.Options.Port = int64(cBase.Options.Port)
