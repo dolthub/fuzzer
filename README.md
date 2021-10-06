@@ -40,7 +40,7 @@ Commands are a way to interact with the generated repositories in some way, or t
     * Auto GC
     * Manual GC
     * Include README Config
-    * Enforce Rows Lower Bound on Master Only
+    * Enforce Rows Lower Bound on Main Only
     * Logging
     * Port
 * Type Parameters
