@@ -73,7 +73,7 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 	if err != nil {
 		return errors.Wrap(err)
 	}
-	if currentBranch.Name == "master" && uint64(len(tables)) < c.Blueprint.TableCount &&
+	if currentBranch.Name == "main" && uint64(len(tables)) < c.Blueprint.TableCount &&
 		probabilityVal < m.tableProbability {
 		_, err := currentBranch.NewTable(c)
 		if err != nil {
@@ -114,8 +114,8 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 
 	// If all of the tables have their target amount of rows, then table will be nil
 	if table == nil {
-		// If we still have tables to create on master then we create them now
-		if currentBranch.Name == "master" && uint64(len(tables)) < c.Blueprint.TableCount {
+		// If we still have tables to create on main then we create them now
+		if currentBranch.Name == "main" && uint64(len(tables)) < c.Blueprint.TableCount {
 			_, err = currentBranch.NewTable(c)
 			if err != nil {
 				return errors.Wrap(err)

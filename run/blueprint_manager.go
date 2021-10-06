@@ -41,7 +41,7 @@ func (m *BlueprintManager) InitializeBlueprint(c *Cycle) error {
 		return errors.Wrap(err)
 	}
 	c.Blueprint.TableCount = uint64(tableCount)
-	c.Blueprint.TargetRowCount = map[string]map[string]uint64{"master": make(map[string]uint64)}
+	c.Blueprint.TargetRowCount = map[string]map[string]uint64{"main": make(map[string]uint64)}
 	return nil
 }
 
@@ -58,7 +58,7 @@ func (m *BlueprintManager) NewBranch(c *Cycle, branch *Branch) error {
 	var rowCount int64
 	var err error
 	for tableName := range c.Blueprint.TargetRowCount[currentBranchName] {
-		if c.Planner.Base.Options.LowerRowsMasterOnly && currentBranchName != "master" {
+		if c.Planner.Base.Options.LowerRowsMainOnly && currentBranchName != "main" {
 			rowCount, err = c.Planner.Base.Amounts.Rows.RandomValueExpandLower(0)
 			if err != nil {
 				return errors.Wrap(err)
@@ -80,7 +80,7 @@ func (m *BlueprintManager) NewTable(c *Cycle, table *Table) error {
 	currentBranchName := c.GetCurrentBranch().Name
 	var rowCount int64
 	var err error
-	if c.Planner.Base.Options.LowerRowsMasterOnly && currentBranchName != "master" {
+	if c.Planner.Base.Options.LowerRowsMainOnly && currentBranchName != "main" {
 		rowCount, err = c.Planner.Base.Amounts.Rows.RandomValueExpandLower(0)
 		if err != nil {
 			return errors.Wrap(err)

@@ -62,16 +62,16 @@ type StatementDistribution struct {
 
 // Options are directives for all cycles.
 type Options struct {
-	DoltVersion         string
-	AutoGC              bool
-	ManualGC            bool
-	IncludeReadme       bool
-	LowerRowsMasterOnly bool
-	Logging             bool
-	DeleteSuccesses     bool
-	Port                int64
-	ZipInternalData     bool
-	DeleteAfterZip      bool
+	DoltVersion       string
+	AutoGC            bool
+	ManualGC          bool
+	IncludeReadme     bool
+	LowerRowsMainOnly bool
+	Logging           bool
+	DeleteSuccesses   bool
+	Port              int64
+	ZipInternalData   bool
+	DeleteAfterZip    bool
 }
 
 // Types represents all of the MySQL types available to the program.
