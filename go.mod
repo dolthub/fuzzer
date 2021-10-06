@@ -3,8 +3,8 @@ module github.com/dolthub/fuzzer
 go 1.17
 
 require (
-	github.com/dolthub/dolt/go v0.0.0-20210726233236-4a6e9844c2de
-	github.com/dolthub/go-mysql-server v0.10.1-0.20210725205735-1cd0f1c7de58
+	github.com/dolthub/dolt/go v0.0.0-20211006164447-08eb50be97c5
+	github.com/dolthub/go-mysql-server v0.10.1-0.20211004165413-6baf28ae0060
 	github.com/dolthub/go-sqlite3 v0.0.0-20210727204547-fc90854366f3
 	github.com/fatih/color v1.9.0
 	github.com/go-sql-driver/mysql v1.6.0
@@ -24,9 +24,9 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/denisbrodbeck/machineid v1.0.1 // indirect
 	github.com/dolthub/dolt/go/gen/proto/dolt/services/eventsapi v0.0.0-20201005193433-3ee972b1d078 // indirect
-	github.com/dolthub/fslock v0.0.2 // indirect
+	github.com/dolthub/fslock v0.0.3 // indirect
 	github.com/dolthub/mmap-go v1.0.4-0.20201107010347-f9f2a9588a66 // indirect
-	github.com/dolthub/vitess v0.0.0-20210630174954-8b41176178e1 // indirect
+	github.com/dolthub/vitess v0.0.0-20210823180838-e36a9ec06b90 // indirect
 	github.com/dustin/go-humanize v1.0.0 // indirect
 	github.com/go-kit/kit v0.10.0 // indirect
 	github.com/golang/glog v0.0.0-20210429001901-424d2337a529 // indirect
