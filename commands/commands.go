@@ -17,9 +17,8 @@ package commands
 import (
 	"strings"
 
-	"github.com/dolthub/dolt/go/libraries/utils/argparser"
-
 	"github.com/dolthub/fuzzer/run"
+	"github.com/dolthub/fuzzer/utils/argparser"
 )
 
 // Command is the interface for fuzzer commands.

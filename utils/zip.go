@@ -22,9 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dolthub/dolt/go/libraries/utils/file"
-
 	"github.com/dolthub/fuzzer/errors"
+	"github.com/dolthub/fuzzer/utils/file"
 )
 
 // ZipFile zips the file into an archive containing the given file as its root. May optionally delete the given file

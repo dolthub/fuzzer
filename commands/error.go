@@ -15,11 +15,10 @@
 package commands
 
 import (
-	"github.com/dolthub/dolt/go/cmd/dolt/cli"
-	"github.com/dolthub/dolt/go/libraries/utils/argparser"
-
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/run"
+	"github.com/dolthub/fuzzer/utils/argparser"
+	"github.com/dolthub/fuzzer/utils/cli"
 )
 
 const (
