@@ -22,13 +22,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/dolt/go/libraries/utils/file"
 	_ "github.com/go-sql-driver/mysql"
 
 	"github.com/dolthub/fuzzer/blueprint"
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/ranges"
 	"github.com/dolthub/fuzzer/run/connection"
+	"github.com/dolthub/fuzzer/utils/file"
 )
 
 var env = os.Environ()

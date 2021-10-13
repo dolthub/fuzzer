@@ -22,14 +22,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dolthub/dolt/go/cmd/dolt/cli"
-	"github.com/dolthub/dolt/go/libraries/utils/argparser"
-	"github.com/fatih/color"
-
 	"github.com/dolthub/fuzzer/commands"
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/parameters"
 	"github.com/dolthub/fuzzer/run"
+	"github.com/dolthub/fuzzer/utils/argparser"
+	"github.com/dolthub/fuzzer/utils/cli"
 )
 
 const (
@@ -44,7 +42,7 @@ const (
 
 func main() {
 	ap, apr := getArgParser()
-	args := apr.Args
+	args := apr.Args()
 	if len(args) < 1 {
 		usageFunc()()
 		os.Exit(0)
@@ -53,13 +51,13 @@ func main() {
 	var cmd commands.Command
 	var ok bool
 	if cmd, ok = commands.Commands[strings.ToLower(args[0])]; !ok {
-		cli.PrintErrf(color.RedString("error: unknown command `%v`\n", args[0]))
+		cli.PrintErrf("error: unknown command `%v`\n", args[0])
 		usageFunc()()
 		os.Exit(1)
 	}
 	err := cmd.ParseArgs("fuzzer "+cmd.Name(), ap, os.Args[1:])
 	if err != nil {
-		cli.PrintErrln(color.RedString("%v", err))
+		cli.PrintErrln("%v", err)
 		os.Exit(1)
 	}
 
@@ -69,12 +67,12 @@ func main() {
 	}
 	base, err := parameters.LoadFromFile(configPath)
 	if err != nil {
-		cli.PrintErrln(color.RedString("%v", err))
+		cli.PrintErrln("%v", err)
 		os.Exit(1)
 	}
 	planner, err := run.NewPlanner(base)
 	if err != nil {
-		cli.PrintErrln(color.RedString("%v", err))
+		cli.PrintErrln("%v", err)
 		os.Exit(1)
 	}
 	cmd.Register(planner.Hooks)
@@ -88,7 +86,7 @@ func main() {
 	if readParam, ok := apr.GetValue(timeoutParam); ok {
 		base.Arguments.Timeout, err = time.ParseDuration(readParam)
 		if err != nil {
-			cli.PrintErrf(color.RedString("%+v\n", err))
+			cli.PrintErrf("%+v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -125,7 +123,7 @@ func main() {
 	for ; (base.Arguments.NumOfCycles < 0 && time.Since(startTime) < base.Arguments.Timeout) || i < base.Arguments.NumOfCycles; i++ {
 		cycle, err := planner.NewCycle()
 		if err != nil {
-			cli.PrintErrf(color.RedString("%+v\n", err))
+			cli.PrintErrf("%+v\n", err)
 			if base.Arguments.FirstError {
 				break
 			}
@@ -137,7 +135,7 @@ func main() {
 				if r := recover(); r != nil {
 					base.Arguments.NumOfCycles = 1
 					failures++
-					cli.PrintErrf(color.RedString(fmt.Sprintf("%+v", r)))
+					cli.PrintErrf(fmt.Sprintf("%+v", r))
 				}
 			}()
 			if err = cycle.Run(); err != nil {
@@ -146,7 +144,7 @@ func main() {
 					cycleCount--
 					i--
 				} else {
-					cli.PrintErrf(color.RedString("%+v\n", err))
+					cli.PrintErrf("%+v\n", err)
 					failures++
 					if base.Arguments.FirstError {
 						base.Arguments.NumOfCycles = 1
@@ -159,7 +157,7 @@ func main() {
 		metricsFile, err := os.OpenFile(fmt.Sprintf("%s%s.txt", base.Arguments.MetricsPath, time.Now().Format("20060102150405")),
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
 		if err != nil {
-			cli.PrintErrf(color.RedString("%+v\n", err))
+			cli.PrintErrf("%+v\n", err)
 			os.Exit(1)
 		}
 		defer func() {
@@ -168,7 +166,7 @@ func main() {
 		_, err = metricsFile.WriteString(fmt.Sprintf(`{"Runs":%d,"Successful":%d,"Failed":%d}`,
 			cycleCount, cycleCount-failures, failures))
 		if err != nil {
-			cli.PrintErrf(color.RedString("%+v\n", err))
+			cli.PrintErrf("%+v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -211,7 +209,7 @@ Uses time.ParseDuration, so refer to Go's documentation on allowed strings: http
 	apr, err := ap.Parse(args)
 	if err != nil {
 		if err != argparser.ErrHelp {
-			cli.PrintErrln(color.RedString("%v", err.Error()))
+			cli.PrintErrln("%v", err.Error())
 			usageFunc()()
 			os.Exit(1)
 		} else {
@@ -223,7 +221,7 @@ Uses time.ParseDuration, so refer to Go's documentation on allowed strings: http
 			}
 			apr, err = ap.Parse(args)
 			if err != nil {
-				cli.PrintErrln(color.RedString("%v", err.Error()))
+				cli.PrintErrln("%v", err.Error())
 				usageFunc()()
 				os.Exit(1)
 			}
@@ -236,7 +234,7 @@ action(s) on them. This is for the purpose of fuzzing Dolt. Those actions are se
 					Synopsis: []string{"<command> [<option>...]"},
 				}, ap))
 				help()
-				cli.Println(color.New(color.Bold).Sprint("\bCOMMANDS"))
+				cli.Println("\bCOMMANDS")
 				cmds := sortedCommands()
 				for _, cmd := range cmds {
 					cli.Printf("\t%s - %s\n", cmd.Name(), cmd.Description())
@@ -274,11 +272,11 @@ func createFolder(path string) {
 		if _, err := os.Stat(path); os.IsNotExist(err) {
 			err = os.Mkdir(path, os.ModeDir|0777)
 			if err != nil {
-				cli.PrintErrf(color.RedString("%+v\n", err))
+				cli.PrintErrf("%+v\n", err)
 				os.Exit(1)
 			}
 		} else if err != nil {
-			cli.PrintErrf(color.RedString("%+v\n", err))
+			cli.PrintErrf("%+v\n", err)
 			os.Exit(1)
 		}
 	}
@@ -287,7 +285,7 @@ func createFolder(path string) {
 func expandPath(path string) string {
 	absPath, err := filepath.Abs(path)
 	if err != nil {
-		cli.PrintErrf(color.RedString("%+v\n", err))
+		cli.PrintErrf("%+v\n", err)
 		os.Exit(1)
 	}
 	absPath = strings.ReplaceAll(absPath, `\`, `/`)
