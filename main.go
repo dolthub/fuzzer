@@ -44,7 +44,7 @@ const (
 
 func main() {
 	ap, apr := getArgParser()
-	args := apr.Args()
+	args := apr.Args
 	if len(args) < 1 {
 		usageFunc()()
 		os.Exit(0)
