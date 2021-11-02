@@ -50,6 +50,11 @@ func (m *RepositoryManager) Initialize(c *Cycle) error {
 
 // CycleStarted creates the initial table and starts the MainLoop of the repository manager.
 func (m *RepositoryManager) CycleStarted(c *Cycle) error {
+	// This is only set when a command is replaying a log file, so we don't want to generate any data in that case.
+	// If the RepositoryManager ever handles more than just generating and validating data, this may need to be updated.
+	if c.Planner.Base.Arguments.DontGenRandomData {
+		return nil
+	}
 	_, err := c.GetCurrentBranch().NewTable(c)
 	if err != nil {
 		return errors.Wrap(err)
@@ -112,7 +117,7 @@ func (m *RepositoryManager) MainLoop(c *Cycle) error {
 		}
 	}
 
-	// If all of the tables have their target amount of rows, then table will be nil
+	// If all the tables have their target amount of rows, then table will be nil
 	if table == nil {
 		// If we still have tables to create on main then we create them now
 		if currentBranch.Name == "main" && uint64(len(tables)) < c.Blueprint.TableCount {

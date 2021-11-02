@@ -14,7 +14,11 @@
 
 package run
 
-import "github.com/dolthub/fuzzer/errors"
+import (
+	"strings"
+
+	"github.com/dolthub/fuzzer/errors"
+)
 
 // Commit represents either a commit or the working set in dolt.
 type Commit struct {
@@ -22,6 +26,17 @@ type Commit struct {
 	Parents     []*Commit
 	Tables      []*Table
 	ForeignKeys []*ForeignKey
+}
+
+// GetTable returns the table from this commit, or nil if it does not exist. Case-insensitive.
+func (c *Commit) GetTable(tableName string) *Table {
+	tableName = strings.ToLower(tableName)
+	for _, table := range c.Tables {
+		if strings.ToLower(table.Name) == tableName {
+			return table
+		}
+	}
+	return nil
 }
 
 // Copy returns a deep copy of the calling commit.

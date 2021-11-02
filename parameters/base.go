@@ -113,11 +113,12 @@ type Types struct {
 
 // Arguments represents any arguments that are passed into the program at runtime.
 type Arguments struct {
-	NumOfCycles      int64
-	Timeout          time.Duration
-	FirstError       bool
-	ConfigPath       string
-	RepoFinishedPath string
-	RepoWorkingPath  string
-	MetricsPath      string
+	NumOfCycles       int64
+	Timeout           time.Duration
+	FirstError        bool
+	ConfigPath        string
+	RepoFinishedPath  string
+	RepoWorkingPath   string
+	MetricsPath       string
+	DontGenRandomData bool
 }
