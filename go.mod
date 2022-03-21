@@ -1,6 +1,6 @@
 module github.com/dolthub/fuzzer
 
-go 1.17
+go 1.18
 
 require (
 	github.com/dolthub/go-mysql-server v0.10.1-0.20211004165413-6baf28ae0060
