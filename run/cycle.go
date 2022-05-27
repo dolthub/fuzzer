@@ -29,9 +29,8 @@ import (
 	"github.com/dolthub/fuzzer/ranges"
 	"github.com/dolthub/fuzzer/run/connection"
 	"github.com/dolthub/fuzzer/utils/file"
+	fuzzer_os "github.com/dolthub/fuzzer/utils/os"
 )
-
-var env = os.Environ()
 
 // Cycle is the orchestrator of a run cycle, which includes the creation of a repository, as well as the execution of
 // any commands obtained from the planner.
@@ -334,7 +333,7 @@ func (c *Cycle) CliQuery(args ...string) (string, error) {
 	stdOutBuffer := &bytes.Buffer{}
 	stdErrBuffer := &bytes.Buffer{}
 	doltQuery := exec.Command("dolt", args...)
-	doltQuery.Env = env
+	doltQuery.Env = fuzzer_os.Environ()
 	doltQuery.Stdout = stdOutBuffer
 	doltQuery.Stderr = stdErrBuffer
 	err = doltQuery.Run()
