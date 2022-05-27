@@ -20,7 +20,7 @@ var env []string
 
 func init() {
 	env = os2.Environ()
-	env = append(env, "DOLT_DEFAULT_BIN_FORMAT=__DOLT_1__")
+	//env = append(env, "DOLT_DEFAULT_BIN_FORMAT=__DOLT_1__")
 }
 
 func Environ() []string {
