@@ -25,6 +25,7 @@ import (
 	"github.com/gocraft/dbr/v2"
 
 	"github.com/dolthub/fuzzer/errors"
+	fuzzer_os "github.com/dolthub/fuzzer/utils/os"
 )
 
 // DoltConnection represents a running Dolt process along with its connection to the server. This allows for individual
@@ -42,7 +43,6 @@ type DoltConnection struct {
 var (
 	dcLock               sync.Mutex
 	globalDoltConnection *DoltConnection
-	env                  = os.Environ()
 )
 
 // GetDoltConnection returns an existing connection if one exists and matches the parameters. If an existing one does
@@ -77,7 +77,7 @@ func GetDoltConnection(port int64, dbName string) (*DoltConnection, error) {
 
 	stdErrBuffer := &bytes.Buffer{}
 	doltSqlServer := exec.Command("dolt", "sql-server", "-H=0.0.0.0", fmt.Sprintf("-P=%d", port))
-	doltSqlServer.Env = env
+	doltSqlServer.Env = fuzzer_os.Environ()
 	doltSqlServer.Stderr = stdErrBuffer
 	err := doltSqlServer.Start()
 	if err != nil {
