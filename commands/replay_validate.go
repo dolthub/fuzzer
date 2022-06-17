@@ -21,15 +21,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/parse"
+	"github.com/dolthub/go-mysql-server/sql/plan"
+
 	"github.com/dolthub/fuzzer/errors"
+	"github.com/dolthub/fuzzer/parameters"
 	"github.com/dolthub/fuzzer/run"
 	"github.com/dolthub/fuzzer/types"
 	"github.com/dolthub/fuzzer/utils/argparser"
 	"github.com/dolthub/fuzzer/utils/cli"
-
-	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
-	"github.com/dolthub/go-mysql-server/sql/plan"
 )
 
 const (
@@ -96,6 +97,12 @@ the internal data.`,
 	} else {
 		return errors.New(fmt.Sprintf("The '%s' parameter is required to use the '%s' command", dataParam, rv.Name()))
 	}
+	return nil
+}
+
+// AdjustConfig implements the interface Command.
+func (rv *ReplayValidate) AdjustConfig(config *parameters.Base) error {
+	config.Arguments.NumOfCycles = 1
 	return nil
 }
 

@@ -40,7 +40,8 @@ type Cycle struct {
 	Blueprint     *blueprint.Blueprint
 	Logger        Logger
 	statementDist *ranges.DistributionCenter
-	typeDist      *ranges.DistributionCenter
+	pkTypeDist    *ranges.DistributionCenter
+	nonPkTypeDist *ranges.DistributionCenter
 	nameRegexes   *nameRegexes
 	usedNames     map[string]struct{}
 	branches      []*Branch
@@ -65,7 +66,37 @@ func newCycle(planner *Planner) (*Cycle, error) {
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	typeDist, err := ranges.NewDistributionCenter(
+	pkTypeDist, err := ranges.NewDistributionCenter(
+		&planner.Base.Types.Bigint,
+		&planner.Base.Types.BigintUnsigned,
+		&planner.Base.Types.Binary,
+		&planner.Base.Types.Bit,
+		&planner.Base.Types.Char,
+		&planner.Base.Types.Date,
+		&planner.Base.Types.Datetime,
+		&planner.Base.Types.Decimal,
+		&planner.Base.Types.Double,
+		&planner.Base.Types.Enum,
+		&planner.Base.Types.Float,
+		&planner.Base.Types.Int,
+		&planner.Base.Types.IntUnsigned,
+		&planner.Base.Types.Mediumint,
+		&planner.Base.Types.MediumintUnsigned,
+		&planner.Base.Types.Set,
+		&planner.Base.Types.Smallint,
+		&planner.Base.Types.SmallintUnsigned,
+		&planner.Base.Types.Time,
+		&planner.Base.Types.Timestamp,
+		&planner.Base.Types.Tinyint,
+		&planner.Base.Types.TinyintUnsigned,
+		&planner.Base.Types.Varbinary,
+		&planner.Base.Types.Varchar,
+		&planner.Base.Types.Year,
+	)
+	if err != nil {
+		return nil, errors.Wrap(err)
+	}
+	nonPkTypeDist, err := ranges.NewDistributionCenter(
 		&planner.Base.Types.Bigint,
 		&planner.Base.Types.BigintUnsigned,
 		&planner.Base.Types.Binary,
@@ -109,7 +140,8 @@ func newCycle(planner *Planner) (*Cycle, error) {
 		Logger:        &fakeLogger{},
 		usedNames:     map[string]struct{}{"main": {}},
 		statementDist: statementDist,
-		typeDist:      typeDist,
+		pkTypeDist:    pkTypeDist,
+		nonPkTypeDist: nonPkTypeDist,
 		nameRegexes:   nameRegexes,
 		currentBranch: 0,
 		actionQueue:   make(chan func(*Cycle) error, 300),

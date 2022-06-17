@@ -21,6 +21,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dolthub/fuzzer/parameters"
+
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/run"
 	"github.com/dolthub/fuzzer/types"
@@ -98,6 +100,11 @@ This also performs a validation step before testing merge, which is the same as 
 		Synopsis: nil,
 	}, ap))
 	_ = cli.ParseArgsOrDie(ap, args, help)
+	return nil
+}
+
+// AdjustConfig implements the interface Command.
+func (m *Merge) AdjustConfig(config *parameters.Base) error {
 	return nil
 }
 

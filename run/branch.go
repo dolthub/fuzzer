@@ -144,7 +144,7 @@ func (b *Branch) NewTable(c *Cycle) (*Table, error) {
 	for pkIter := 0; pkIter <= 100; pkIter++ {
 		valueCombinations := float64(1)
 		for i := 0; i < len(pkCols); i++ {
-			fullType, err := c.typeDist.Get(1)
+			fullType, err := c.pkTypeDist.Get(1)
 			if err != nil {
 				return nil, errors.Wrap(err)
 			}
@@ -185,7 +185,7 @@ func (b *Branch) NewTable(c *Cycle) (*Table, error) {
 	}
 
 	for i := 0; i < len(nonPkCols); i++ {
-		fullType, err := c.typeDist.Get(1)
+		fullType, err := c.nonPkTypeDist.Get(1)
 		if err != nil {
 			return nil, errors.Wrap(err)
 		}

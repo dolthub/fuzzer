@@ -15,6 +15,7 @@
 package commands
 
 import (
+	"github.com/dolthub/fuzzer/parameters"
 	"github.com/dolthub/fuzzer/run"
 	"github.com/dolthub/fuzzer/utils/argparser"
 	"github.com/dolthub/fuzzer/utils/cli"
@@ -54,5 +55,10 @@ command validates repositories that are constrained only by the configuration fi
 		Synopsis: nil,
 	}, ap))
 	_ = cli.ParseArgsOrDie(ap, args, help)
+	return nil
+}
+
+// AdjustConfig implements the interface Command.
+func (b *Basic) AdjustConfig(config *parameters.Base) error {
 	return nil
 }

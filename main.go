@@ -115,6 +115,11 @@ func main() {
 		createFolder(base.Arguments.MetricsPath)
 		base.Arguments.MetricsPath = expandPath(base.Arguments.MetricsPath)
 	}
+	err = cmd.AdjustConfig(base)
+	if err != nil {
+		cli.PrintErrln("%v", err)
+		os.Exit(1)
+	}
 
 	i := int64(0)
 	cycleCount := int64(0)

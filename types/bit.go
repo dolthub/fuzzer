@@ -17,8 +17,6 @@ package types
 import (
 	"fmt"
 	"math"
-	"strconv"
-	"unsafe"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/rand"
@@ -119,11 +117,14 @@ func (v BitValue) Convert(val interface{}) (Value, error) {
 		}
 		v.Uint64Value = Uint64Value(n)
 	case []uint8:
-		pVal, err := strconv.ParseUint(*(*string)(unsafe.Pointer(&val)), 10, 64)
-		if err != nil {
-			return nil, errors.Wrap(err)
+		if len(val) > 8 {
+			return nil, errors.New(fmt.Sprintf("BIT bytes have length %d when max is 8", len(val)))
 		}
-		v.Uint64Value = Uint64Value(pVal)
+		n := uint64(0)
+		for i, x := len(val)-1, 0; i >= 0; i, x = i-1, x+1 {
+			n += uint64(val[i]) << (x * 8)
+		}
+		v.Uint64Value = Uint64Value(n)
 	default:
 		return nil, errors.New(fmt.Sprintf("cannot convert %T to %T", val, v.Name()))
 	}

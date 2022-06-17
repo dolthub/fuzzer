@@ -16,6 +16,7 @@ package commands
 
 import (
 	"github.com/dolthub/fuzzer/errors"
+	"github.com/dolthub/fuzzer/parameters"
 	"github.com/dolthub/fuzzer/run"
 	"github.com/dolthub/fuzzer/utils/argparser"
 	"github.com/dolthub/fuzzer/utils/cli"
@@ -71,5 +72,10 @@ that need to handle the condition of a cycle finishing unsuccessfully.`,
 	} else {
 		e.errMsg = "A forced error has occurred."
 	}
+	return nil
+}
+
+// AdjustConfig implements the interface Command.
+func (e *Error) AdjustConfig(config *parameters.Base) error {
 	return nil
 }

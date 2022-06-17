@@ -86,7 +86,13 @@ func (l *fileLogger) WriteLine(lt LogType, s string) error {
 
 // Close implements the interface Logger.
 func (l *fileLogger) Close() error {
-	return l.file.Close()
+	err := l.file.Sync()
+	if err == nil {
+		return l.file.Close()
+	} else {
+		_ = l.file.Close()
+		return err
+	}
 }
 
 // fakeLogger discards all write statements. Used if a Logger is not specified.

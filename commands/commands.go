@@ -17,6 +17,8 @@ package commands
 import (
 	"strings"
 
+	"github.com/dolthub/fuzzer/parameters"
+
 	"github.com/dolthub/fuzzer/run"
 	"github.com/dolthub/fuzzer/utils/argparser"
 )
@@ -24,9 +26,15 @@ import (
 // Command is the interface for fuzzer commands.
 type Command interface {
 	run.HookRegistrant
+	// Name returns the name of the command. This is what should be passed as an argument.
 	Name() string
+	// Description is the help text to display for this argument.
 	Description() string
+	// ParseArgs handle argument parsing for this command.
 	ParseArgs(commandStr string, ap *argparser.ArgParser, args []string) error
+	// AdjustConfig will adjust the configuration file, as needed, immediately before any cycles begin (after directory
+	// creation, etc.).
+	AdjustConfig(config *parameters.Base) error
 }
 
 var Commands = make(map[string]Command)
