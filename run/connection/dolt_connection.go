@@ -79,6 +79,7 @@ func GetDoltConnection(port int64, dbName string) (*DoltConnection, error) {
 	doltSqlServer := exec.Command("dolt", "sql-server", "-H=0.0.0.0", fmt.Sprintf("-P=%d", port))
 	doltSqlServer.Env = fuzzer_os.Environ()
 	doltSqlServer.Stderr = stdErrBuffer
+	fuzzer_os.DisassociateExec(doltSqlServer)
 	err := doltSqlServer.Start()
 	if err != nil {
 		return nil, errors.Wrap(err)
@@ -144,7 +145,7 @@ func (conn *DoltConnection) Close() error {
 		return nil
 	}
 	cErr := conn.Conn.Close()
-	pErr := conn.Process.Kill()
+	pErr := fuzzer_os.CloseProcess(conn.Process)
 	// Check errors in reverse order
 	if pErr != nil {
 		return errors.Wrap(pErr)
