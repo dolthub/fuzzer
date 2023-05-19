@@ -17,13 +17,18 @@ package rand
 // This package is used for generating random numbers that is safe for concurrent use.
 
 import (
+	"bufio"
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"math"
-	"sync"
-
 	"github.com/dolthub/fuzzer/errors"
+	pkgErrors "github.com/pkg/errors"
+	"math"
+	"os"
+	"os/signal"
+	"path/filepath"
+	"sync"
+	"syscall"
 )
 
 // This package is used for generating random numbers that is safe for concurrent use, specifically for the purposes of
@@ -39,12 +44,146 @@ const (
 	extAlphNumCharsLen = byte(len(extAlphNumChars))
 )
 
+var eofErr = pkgErrors.New("EOF")
+
 var (
 	// From testing on a single Windows PC, a buffer of 524288 was found to have the best overall performance.
-	buffer = make([]byte, 524288)
-	idx    = 0
-	mutex  = &sync.Mutex{}
+	buffer      = make([]byte, 524288)
+	idx         = 0
+	mutex       = &sync.Mutex{}
+	seedOutPath = ""
+	seedInPath  = ""
+
+	seedOutWriter *bufio.Writer
+	seedInSize    int64
+	seedInPos     int64
+	seedInReader  *bufio.Reader
 )
+
+func Configure(seedInFilePath string, seedOutFilePath string) error {
+	seedInPath = ""
+	seedOutPath = ""
+	seedInPos = -1
+	seedInSize = -1
+	seedInReader = nil
+	seedOutWriter = nil
+	var err error
+
+	if seedInFilePath == seedOutFilePath {
+		return errors.New("seed in and seed out files cannot be the same")
+	}
+
+	// configure input file
+	if len(seedInFilePath) > 0 {
+		seedInPath, err = filepath.Abs(seedInFilePath)
+		if err != nil {
+			fmt.Printf("error getting absolute path for seed in file %s: %s\n", seedInFilePath, err.Error())
+			return err
+		}
+		fmt.Printf("seed in file path: %s\n", seedInPath)
+		stat, err := os.Stat(seedInPath)
+		if err != nil {
+			fmt.Printf("error opening seed in file %s: %s\n", seedInPath, err.Error())
+			return err
+		}
+		if stat.IsDir() {
+			fmt.Printf("seed in file %s is a directory\n", seedInPath)
+			return errors.New("seed in file is a directory")
+		}
+
+		file, err := os.Open(seedInPath)
+		if err != nil {
+			fmt.Printf("error opening seed in file %s: %s\n", seedInPath, err.Error())
+			return err
+		}
+
+		seedInReader = bufio.NewReader(file)
+		seedInSize = stat.Size()
+		seedInPos = 0
+	}
+
+	// configure output file
+	if len(seedOutFilePath) > 0 {
+		seedOutPath, err = filepath.Abs(seedOutFilePath)
+		if err != nil {
+			fmt.Printf("error getting absolute path for seed out file %s: %s\n", seedOutFilePath, err.Error())
+			return err
+		}
+		fmt.Printf("seed out file path: %s\n", seedOutPath)
+
+		file, err := os.OpenFile(seedOutPath, os.O_CREATE|os.O_WRONLY, 0644)
+		if err != nil {
+			fmt.Printf("error opening seed out file %s: %s\n", seedOutPath, err.Error())
+			return err
+		}
+		seedOutWriter = bufio.NewWriter(file)
+
+		signals := make(chan os.Signal, 1)
+		signal.Notify(signals, syscall.SIGINT, syscall.SIGTERM)
+		go func() {
+			<-signals
+
+			seedInReader = nil
+			if seedOutWriter == nil {
+				return
+			}
+
+			err := seedOutWriter.Flush()
+			if err != nil {
+				fmt.Printf("error flushing seed out file: %s\n", err.Error())
+				return
+			}
+			seedOutWriter = nil
+
+			err = file.Close()
+			if err != nil {
+				fmt.Printf("error closing seed out file: %s\n", err.Error())
+				return
+			}
+		}()
+	}
+
+	return nil
+}
+func readBytesFromSeedFile(length int) (readBytes int, data []byte, err error) {
+	bytesRemaining := seedInSize - seedInPos
+	if bytesRemaining == 0 {
+		return 0, []byte{}, eofErr
+	} else if bytesRemaining > int64(length) {
+		buffer = make([]byte, length)
+		read, err := seedInReader.Read(buffer)
+		if err != nil {
+			return -1, nil, err
+		}
+		seedInPos += int64(read)
+		return read, buffer, nil
+	} else {
+		buffer = make([]byte, bytesRemaining)
+		read, err := seedInReader.Read(buffer)
+		if err != nil {
+			return -1, nil, err
+		}
+		seedInPos += int64(read)
+		return read, buffer, eofErr
+	}
+}
+func writeBytesToSeedFile(data []byte) error {
+	if seedOutWriter == nil {
+		return nil
+	}
+
+	_, err := seedOutWriter.Write(data)
+	if err != nil {
+		fmt.Printf("error writing seed file: %s\n", err.Error())
+		return err
+	}
+
+	return nil
+}
+func Finalize() (seedOutFilePath string, err error) {
+	err = seedOutWriter.Flush()
+	return seedOutPath, err
+}
 
 func init() {
 	readBytes, err := rand.Read(buffer)
@@ -89,6 +228,42 @@ func allocateAndReturnBytes(length int) ([]byte, error) {
 // Bytes returns a slice of bytes with the given length. The underlying array will usually be the buffer, therefore it
 // is recommended to not use the string buffer shortcut for converting a byte array to string.
 func Bytes(length int) ([]byte, error) {
+	var data []byte
+	var err error
+	if seedInReader != nil {
+		var readBytes int
+		// try to get as many bytes from the file
+		readBytes, data, err = readBytesFromSeedFile(length)
+		if err != nil {
+			// in case we run out of file, get the remaining bytes from crypto/rand
+			if err == eofErr {
+				length -= readBytes
+
+				cryptoBytes, err := bytesFromCrypto(length)
+				if err != nil {
+					return nil, err
+				}
+				data = append(data, cryptoBytes...)
+			} else {
+				return nil, errors.New(fmt.Sprintf("error reading seed file %s: %s", seedInPath, err.Error()))
+			}
+		}
+	} else {
+		// no file reader setup, get all bytes from crypto/rand
+		data, err = bytesFromCrypto(length)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	err = writeBytesToSeedFile(data)
+	if err != nil {
+		return nil, err
+	}
+
+	return data, nil
+}
+func bytesFromCrypto(length int) ([]byte, error) {
 	// On benchmarks from a single Windows PC, it was observed that lengths over 65536 begin to degrade in performance
 	// versus "crypto/rand".Read().
 	if length > 65536 {
@@ -111,7 +286,11 @@ func Bytes(length int) ([]byte, error) {
 		return data, nil
 	}
 	mutex.Unlock()
-	return allocateAndReturnBytes(length)
+	data, err := allocateAndReturnBytes(length)
+	if err != nil {
+		return nil, err
+	}
+	return data, nil
 }
 
 // String returns a random string. All characters will be ASCII between the inclusive decimal range of 32-126, with

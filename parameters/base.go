@@ -72,6 +72,8 @@ type Options struct {
 	Port              int64
 	ZipInternalData   bool
 	DeleteAfterZip    bool
+	SeedInFile        string
+	SeedOutFile       string
 }
 
 // Types represents all of the MySQL types available to the program.
