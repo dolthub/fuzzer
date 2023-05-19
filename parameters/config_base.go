@@ -207,6 +207,8 @@ type configOptions struct {
 	Port              uint64 `json:"Port"`
 	ZipInternalData   bool   `json:"Zip_Internal_Data"`
 	DeleteAfterZip    bool   `json:"Delete_After_Zip"`
+	SeedInFile        string `json:"Seed_In_File"`
+	SeedOutFile       string `json:"Seed_Out_File"`
 }
 
 // Validate checks if the read values are valid.

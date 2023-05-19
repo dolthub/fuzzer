@@ -16,6 +16,7 @@ package main
 
 import (
 	"fmt"
+	"github.com/dolthub/fuzzer/rand"
 	"os"
 	"path/filepath"
 	"sort"
@@ -38,6 +39,7 @@ const (
 	repoDonePathParam = "repo-finished"
 	repoWorkPathParam = "repo-working"
 	timeoutParam      = "timeout"
+	seedInParam       = "seed-in-file"
 )
 
 func main() {
@@ -57,7 +59,7 @@ func main() {
 	}
 	err := cmd.ParseArgs("fuzzer "+cmd.Name(), ap, os.Args[1:])
 	if err != nil {
-		cli.PrintErrln("%v", err)
+		cli.PrintErrln(err)
 		os.Exit(1)
 	}
 
@@ -67,12 +69,12 @@ func main() {
 	}
 	base, err := parameters.LoadFromFile(configPath)
 	if err != nil {
-		cli.PrintErrln("%v", err)
+		cli.PrintErrln(err)
 		os.Exit(1)
 	}
 	planner, err := run.NewPlanner(base)
 	if err != nil {
-		cli.PrintErrln("%v", err)
+		cli.PrintErrln(err)
 		os.Exit(1)
 	}
 	cmd.Register(planner.Hooks)
@@ -107,6 +109,24 @@ func main() {
 		base.Arguments.MetricsPath = readParam
 	}
 
+	seedInPath := ""
+	if len(base.Options.SeedInFile) > 0 {
+		seedInPath = base.Options.SeedInFile
+	}
+	if readParam, ok := apr.GetValue(seedInParam); ok {
+		readParam = strings.ReplaceAll(readParam, `\`, `/`)
+		seedInPath = readParam
+	}
+	seedOutPath := "./seed-out.bin"
+	if len(base.Options.SeedOutFile) > 0 {
+		seedOutPath = base.Options.SeedOutFile
+	}
+	err = rand.Configure(seedInPath, seedOutPath)
+	if err != nil {
+		cli.PrintErrln(err)
+		os.Exit(1)
+	}
+
 	createFolder(base.Arguments.RepoWorkingPath)
 	base.Arguments.RepoWorkingPath = expandPath(base.Arguments.RepoWorkingPath)
 	createFolder(base.Arguments.RepoFinishedPath)
@@ -117,7 +137,7 @@ func main() {
 	}
 	err = cmd.AdjustConfig(base)
 	if err != nil {
-		cli.PrintErrln("%v", err)
+		cli.PrintErrln(err)
 		os.Exit(1)
 	}
 
@@ -158,6 +178,15 @@ func main() {
 			}
 		}()
 	}
+	
+	if cycleCount == 0 {
+		fmt.Println("No cycles were run")
+	} else {
+		fmt.Printf("Ran %v cycles in %v\n", cycleCount, time.Since(startTime))
+		fmt.Printf("Successful: %v\n", cycleCount-failures)
+		fmt.Printf("Failed: %v\n", failures)
+	}
+
 	if base.Arguments.MetricsPath != "" {
 		metricsFile, err := os.OpenFile(fmt.Sprintf("%s%s.txt", base.Arguments.MetricsPath, time.Now().Format("20060102150405")),
 			os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
@@ -190,6 +219,7 @@ Uses time.ParseDuration, so refer to Go's documentation on allowed strings: http
 	ap.SupportsString(repoWorkPathParam, "", "location", "Specifies a custom location for repositories as they're being worked on.")
 	ap.SupportsString(metricsPathParam, "", "location",
 		"Specifies a custom location for where metric logs are stored. Metrics are not created if a location is not specified.")
+	ap.SupportsString(seedInParam, "", "location", "Specifies a custom location for the seed input file.")
 
 	// Argument parser requires all arguments to be defined upfront, which doesn't work when commands will later define
 	// more arguments. As a result, we remove any arguments that we don't know about here, and the commands will complain
@@ -214,7 +244,7 @@ Uses time.ParseDuration, so refer to Go's documentation on allowed strings: http
 	apr, err := ap.Parse(args)
 	if err != nil {
 		if err != argparser.ErrHelp {
-			cli.PrintErrln("%v", err.Error())
+			cli.PrintErrln(err.Error())
 			usageFunc()()
 			os.Exit(1)
 		} else {
@@ -226,7 +256,7 @@ Uses time.ParseDuration, so refer to Go's documentation on allowed strings: http
 			}
 			apr, err = ap.Parse(args)
 			if err != nil {
-				cli.PrintErrln("%v", err.Error())
+				cli.PrintErrln(err.Error())
 				usageFunc()()
 				os.Exit(1)
 			}
