@@ -4,10 +4,6 @@ on:
   repository_dispatch:
     types: [ fuzzer-issue ]
 
-concurrency:
-  group: fuzzer-issues-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
   create-issue:
     name: Create Dolt Issue found by Dolthub/Fuzzer
