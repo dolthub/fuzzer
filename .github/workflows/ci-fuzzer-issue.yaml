@@ -7,7 +7,7 @@ on:
 jobs:
   create-issue:
     name: Create Dolt Issue found by Dolthub/Fuzzer
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/github-script@v4
         env:
