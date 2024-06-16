@@ -14,12 +14,7 @@
 
 package run
 
-import (
-	"strings"
-
-	"github.com/dolthub/fuzzer/errors"
-	fuzzer_os "github.com/dolthub/fuzzer/utils/os"
-)
+import "github.com/dolthub/fuzzer/errors"
 
 // GCManager handles running GC commands throughout the cycle.
 type GCManager struct {
@@ -31,12 +26,6 @@ var _ HookRegistrant = (*GCManager)(nil)
 
 // Register implements the HookRegistrant interface.
 func (m *GCManager) Register(hooks *Hooks) {
-	// GC isn't implemented in the new format yet
-	for _, envStr := range fuzzer_os.Environ() {
-		if strings.Contains(envStr, "__DOLT_1__") {
-			return
-		}
-	}
 	hooks.CycleInitialized(m.Initialize)
 	hooks.SQLStatementPostExecution(m.Counter)
 	hooks.RepositoryFinished(m.Finish)
