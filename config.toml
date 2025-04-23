@@ -40,29 +40,29 @@ Delete_After_Zip = true # If true, deletes the original contents that were added
 BINARY_Length = [1, 255]
 BIT_Width = [1, 64]
 BLOB_Length = [1, 1000] #MAX=65535
-CHAR_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+CHAR_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 CHAR_Length = [1, 255] #MAX=255, auto adjusts depending on collation
 DECIMAL_Precision = [1, 65] # The total number of digits
 DECIMAL_Scale = [0, 30] # The number of digits after the decimal
-ENUM_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+ENUM_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 ENUM_ElementNameLength = [2, 16]
 ENUM_NumberOfElements = [1, 100]
 LONGBLOB_Length = [1, 1000] #MAX=4294967295
-LONGTEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+LONGTEXT_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 LONGTEXT_Length = [1, 1000] #MAX=4294967295
 MEDIUMBLOB_Length = [1, 1000] #MAX=16777215
-MEDIUMTEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+MEDIUMTEXT_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 MEDIUMTEXT_Length = [1, 1000] #MAX=16777215, auto adjusts depending on collation
-SET_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+SET_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 SET_ElementNameLength = [2, 16]
 SET_NumberOfElements = [1, 64]
-TEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+TEXT_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 TEXT_Length = [1, 1000] #MAX=65535, auto adjusts depending on collation
 TINYBLOB_Length = [1, 255] #MAX=255
-TINYTEXT_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+TINYTEXT_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 TINYTEXT_Length = [1, 255] #MAX=255, auto adjusts depending on collation
 VARBINARY_Length = [1, 1000] #MAX=65535
-VARCHAR_Collations = ["utf8mb4_0900_ai_ci"] # Uses default if empty
+VARCHAR_Collations = ["utf8mb4_0900_bin"] # Uses default if empty
 VARCHAR_Length = [1, 1000] #MAX=65535, auto adjusts depending on collation
 
 [Types.Distribution]
