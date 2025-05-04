@@ -17,6 +17,7 @@ package run
 import (
 	"bytes"
 	"fmt"
+	"github.com/dolthub/fuzzer/rand"
 	"os"
 	"os/exec"
 	"strings"
@@ -168,6 +169,18 @@ func (c *Cycle) Run() (err error) {
 			_ = c.Logger.WriteLine(LogType_ERR, fmt.Sprintf("%+v", err))
 			_ = c.Logger.Close()
 			func() {
+				seedOutPath, rerr := rand.Finalize()
+				if rerr != nil {
+					fmt.Printf("encountered error finalizing randomizer: %+v\n", rerr)
+				}
+				if len(seedOutPath) > 0 {
+					src := seedOutPath
+					dest := c.Planner.Base.Arguments.RepoWorkingPath + c.Name + "/seed-out.bin"
+					renameErr := os.Rename(src, dest)
+					if renameErr != nil {
+						fmt.Printf("failed to move file %s to %s: %+v\n", src, dest, renameErr)
+					}
+				}
 				errFile, fileErr := os.OpenFile(c.Planner.Base.Arguments.RepoWorkingPath+c.Name+"/err.txt",
 					os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0777)
 				if fileErr != nil {

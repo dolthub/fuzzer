@@ -35,6 +35,8 @@ Delete_Successful_Runs = true
 Port = 3307
 Zip_Internal_Data = true # If true, creates a ZIP archive out of the contents of the internal data folder
 Delete_After_Zip = true # If true, deletes the original contents that were added to the ZIP archive
+Seed_Out_File = "./seed-out.bin" # The name of the file that will contain the seed data
+# Seed_In_File = "./previous/seed-out.bin" # The name of the file that will be used to seed the database
 
 [Types.Parameters]
 BINARY_Length = [1, 255]
