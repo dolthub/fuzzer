@@ -58,7 +58,7 @@ func (i *TimeInstance) Get() (Value, error) {
 		vAbs *= -1
 		neg = "-"
 	}
-	return TimeValue{StringValue(fmt.Sprintf("%s%02d:%02d:%02d", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))}, nil
+	return TimeValue{StringValue(fmt.Sprintf("%s%02d:%02d:%02d.000000", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))}, nil
 }
 
 // TypeValue implements the TypeInstance interface.
@@ -71,7 +71,7 @@ func (i *TimeInstance) Name(sqlite bool) string {
 	if sqlite {
 		return "BIGINT"
 	}
-	return "TIME"
+	return "TIME(6)"
 }
 
 // MaxValueCount implements the TypeInstance interface.
@@ -96,7 +96,7 @@ func (v TimeValue) Convert(val interface{}) (Value, error) {
 			vAbs *= -1
 			neg = "-"
 		}
-		v.StringValue = StringValue(fmt.Sprintf("%s%02d:%02d:%02d", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))
+		v.StringValue = StringValue(fmt.Sprintf("%s%02d:%02d:%02d.000000", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))
 	case []byte:
 		v.StringValue = StringValue(val)
 	default:
