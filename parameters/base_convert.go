@@ -69,6 +69,8 @@ func convertConfigBase(cBase *configBase) (*Base, error) {
 	base.Options.Port = int64(cBase.Options.Port)
 	base.Options.ZipInternalData = cBase.Options.ZipInternalData
 	base.Options.DeleteAfterZip = cBase.Options.DeleteAfterZip
+	base.Options.SeedInFile = cBase.Options.SeedInFile
+	base.Options.SeedOutFile = cBase.Options.SeedOutFile
 
 	// Types.Parameters
 	if err := cBase.Types.Parameters.Normalize(); err != nil {
