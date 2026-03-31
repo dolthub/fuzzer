@@ -143,7 +143,7 @@ func (v TimeValue) CSVString() string {
 
 // ToInt64Value returns this value as an Int64Value.
 func (v TimeValue) ToInt64Value() Int64Value {
-	divisions := strings.Split(string(v.StringValue), ":")
+	divisions := strings.Split(strings.Trim(string(v.StringValue), ".000000"), ":")
 	negativeMult := int64(1)
 	if divisions[0][0] == '-' {
 		divisions[0] = divisions[0][1:]
