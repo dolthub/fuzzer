@@ -116,7 +116,16 @@ func (r Row) Equals(otherRow Row) bool {
 	}
 	for i := 0; i < len(r.Values); i++ {
 		if r.Values[i] != otherRow.Values[i] {
-			return false
+			switch val := r.Values[i].(type) {
+			case types.TimeValue:
+				// Since GMS has updated how TIME handles values, we special case the specific check
+				val.StringValue += ".000000"
+				if val != otherRow.Values[i] {
+					return false
+				}
+			default:
+				return false
+			}
 		}
 	}
 	return true

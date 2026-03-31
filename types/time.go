@@ -58,7 +58,7 @@ func (i *TimeInstance) Get() (Value, error) {
 		vAbs *= -1
 		neg = "-"
 	}
-	return TimeValue{StringValue(fmt.Sprintf("%s%02d:%02d:%02d.000000", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))}, nil
+	return TimeValue{StringValue(fmt.Sprintf("%s%02d:%02d:%02d", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))}, nil
 }
 
 // TypeValue implements the TypeInstance interface.
@@ -71,7 +71,7 @@ func (i *TimeInstance) Name(sqlite bool) string {
 	if sqlite {
 		return "BIGINT"
 	}
-	return "TIME(6)"
+	return "TIME"
 }
 
 // MaxValueCount implements the TypeInstance interface.
@@ -96,7 +96,7 @@ func (v TimeValue) Convert(val interface{}) (Value, error) {
 			vAbs *= -1
 			neg = "-"
 		}
-		v.StringValue = StringValue(fmt.Sprintf("%s%02d:%02d:%02d.000000", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))
+		v.StringValue = StringValue(fmt.Sprintf("%s%02d:%02d:%02d", neg, vAbs/3600, (vAbs/60)%60, vAbs%60))
 	case []byte:
 		v.StringValue = StringValue(val)
 	default:
@@ -143,7 +143,7 @@ func (v TimeValue) CSVString() string {
 
 // ToInt64Value returns this value as an Int64Value.
 func (v TimeValue) ToInt64Value() Int64Value {
-	divisions := strings.Split(strings.Trim(string(v.StringValue), ".000000"), ":")
+	divisions := strings.Split(string(v.StringValue), ":")
 	negativeMult := int64(1)
 	if divisions[0][0] == '-' {
 		divisions[0] = divisions[0][1:]
