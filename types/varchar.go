@@ -47,18 +47,18 @@ func (v *Varchar) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(v.Collations))
-	collation, err := sql.ParseCollation(nil, &v.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", v.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength := utils.MinInt64(v.Length.Upperbound, 65535/collation.CharSet.MaxLength())
+	charLength := utils.MinInt64(v.Length.Upperbound, 65535/collation.CharacterSet().MaxLength())
 	return &VarcharInstance{ranges.NewInt([]int64{v.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // VarcharInstance is the TypeInstance of Varchar.
 type VarcharInstance struct {
 	length    ranges.Int
-	collation sql.Collation
+	collation sql.CollationID
 }
 
 var _ TypeInstance = (*VarcharInstance)(nil)

@@ -519,7 +519,7 @@ func checkCollations(collations []string, collationFieldName string) ([]string, 
 		return []string{sql.Collation_Default.String()}, nil
 	}
 	for i := range collations {
-		_, err := sql.ParseCollation(nil, &collations[i], false)
+		_, err := sql.ParseCollation("", collations[i], false)
 		if err != nil {
 			return collations, errors.Wrap(err)
 		}

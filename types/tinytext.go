@@ -47,18 +47,18 @@ func (t *Tinytext) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(t.Collations))
-	collation, err := sql.ParseCollation(nil, &t.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", t.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength := utils.MinInt64(t.Length.Upperbound, 255/collation.CharSet.MaxLength())
+	charLength := utils.MinInt64(t.Length.Upperbound, 255/collation.CharacterSet().MaxLength())
 	return &TinytextInstance{ranges.NewInt([]int64{t.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // TinytextInstance is the TypeInstance of Tinytext.
 type TinytextInstance struct {
 	length    ranges.Int
-	collation sql.Collation
+	collation sql.CollationID
 }
 
 var _ TypeInstance = (*TinytextInstance)(nil)

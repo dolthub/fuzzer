@@ -47,18 +47,18 @@ func (m *Mediumtext) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(m.Collations))
-	collation, err := sql.ParseCollation(nil, &m.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", m.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength := utils.MinInt64(m.Length.Upperbound, 16777215/collation.CharSet.MaxLength())
+	charLength := utils.MinInt64(m.Length.Upperbound, 16777215/collation.CharacterSet().MaxLength())
 	return &MediumtextInstance{ranges.NewInt([]int64{m.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // MediumtextInstance is the TypeInstance of Mediumtext.
 type MediumtextInstance struct {
 	length    ranges.Int
-	collation sql.Collation
+	collation sql.CollationID
 }
 
 var _ TypeInstance = (*MediumtextInstance)(nil)

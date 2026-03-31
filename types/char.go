@@ -51,7 +51,7 @@ func (c *Char) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(c.Collations))
-	collation, err := sql.ParseCollation(nil, &c.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", c.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -61,7 +61,7 @@ func (c *Char) Instance() (TypeInstance, error) {
 // CharInstance is the TypeInstance of Char.
 type CharInstance struct {
 	charLength int
-	collation  sql.Collation
+	collation  sql.CollationID
 }
 
 var _ TypeInstance = (*CharInstance)(nil)

@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/dolthub/go-mysql-server/sql"
+	"github.com/dolthub/go-mysql-server/sql/types"
 	"github.com/dolthub/vitess/go/sqltypes"
 
 	"github.com/dolthub/fuzzer/errors"
@@ -90,7 +91,7 @@ func ConvertGMSSchemaToFuzzerSchema(schema sql.Schema) (pkCols []Column, nonPKCo
 			stringType := sqlCol.Type.(sql.StringType)
 			fuzzerCol.Type = &BinaryInstance{int(stringType.MaxByteLength())}
 		case sqltypes.Bit:
-			bitType := sqlCol.Type.(sql.BitType)
+			bitType := sqlCol.Type.(types.BitType)
 			fuzzerCol.Type = &BitInstance{uint64(bitType.NumberOfBits())}
 		case sqltypes.Enum:
 			enumType := sqlCol.Type.(sql.EnumType)

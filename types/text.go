@@ -47,18 +47,18 @@ func (t *Text) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(t.Collations))
-	collation, err := sql.ParseCollation(nil, &t.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", t.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
-	charLength := utils.MinInt64(t.Length.Upperbound, 65535/collation.CharSet.MaxLength())
+	charLength := utils.MinInt64(t.Length.Upperbound, 65535/collation.CharacterSet().MaxLength())
 	return &TextInstance{ranges.NewInt([]int64{t.Length.Lowerbound, charLength}), collation}, nil
 }
 
 // TextInstance is the TypeInstance of Text.
 type TextInstance struct {
 	length    ranges.Int
-	collation sql.Collation
+	collation sql.CollationID
 }
 
 var _ TypeInstance = (*TextInstance)(nil)

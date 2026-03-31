@@ -49,7 +49,7 @@ func (e *Enum) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(e.Collations))
-	collation, err := sql.ParseCollation(nil, &e.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", e.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -85,7 +85,7 @@ func (e *Enum) Instance() (TypeInstance, error) {
 type EnumInstance struct {
 	elements   []string
 	elementMap map[string]uint16
-	collation  sql.Collation
+	collation  sql.CollationID
 }
 
 var _ TypeInstance = (*EnumInstance)(nil)

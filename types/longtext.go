@@ -46,7 +46,7 @@ func (l *Longtext) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(l.Collations))
-	collation, err := sql.ParseCollation(nil, &l.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", l.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -56,7 +56,7 @@ func (l *Longtext) Instance() (TypeInstance, error) {
 // LongtextInstance is the TypeInstance of Longtext.
 type LongtextInstance struct {
 	length    ranges.Int
-	collation sql.Collation
+	collation sql.CollationID
 }
 
 var _ TypeInstance = (*LongtextInstance)(nil)

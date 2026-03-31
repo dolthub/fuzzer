@@ -22,8 +22,8 @@ import (
 	"time"
 
 	"github.com/dolthub/go-mysql-server/sql"
-	"github.com/dolthub/go-mysql-server/sql/parse"
 	"github.com/dolthub/go-mysql-server/sql/plan"
+	"github.com/dolthub/go-mysql-server/sql/planbuilder"
 
 	"github.com/dolthub/fuzzer/errors"
 	"github.com/dolthub/fuzzer/parameters"
@@ -149,7 +149,8 @@ func (rv *ReplayValidate) MainLoop(c *run.Cycle) error {
 		}
 	case "SQLS: ", "SQLQ: ", "SQLB: ":
 		if strings.HasPrefix(lineContents, "CREATE TABLE ") {
-			sqlNode, err := parse.Parse(sql.NewEmptyContext(), lineContents)
+			builder := planbuilder.New(sql.NewEmptyContext(), nil, nil)
+			sqlNode, _, _, _, err := builder.Parse(lineContents, nil, false)
 			if err != nil {
 				return errors.Wrap(err)
 			}

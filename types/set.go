@@ -49,7 +49,7 @@ func (s *Set) Instance() (TypeInstance, error) {
 		return nil, errors.Wrap(err)
 	}
 	colPos %= uint64(len(s.Collations))
-	collation, err := sql.ParseCollation(nil, &s.Collations[colPos], false)
+	collation, err := sql.ParseCollation("", s.Collations[colPos], false)
 	if err != nil {
 		return nil, errors.Wrap(err)
 	}
@@ -85,7 +85,7 @@ func (s *Set) Instance() (TypeInstance, error) {
 type SetInstance struct {
 	elements   []string
 	elementMap map[string]uint64
-	collation  sql.Collation
+	collation  sql.CollationID
 }
 
 var _ TypeInstance = (*SetInstance)(nil)
